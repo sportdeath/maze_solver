@@ -69,7 +69,7 @@ class CircleThreshold:
 if __name__ == "__main__":
     c = CircleThreshold(150)
 
-    img = cv2.imread("/home/racecar/racecar-ws/src/FinalChallenge/Vision/images/x50y200r.png")
+    img = cv2.imread("/home/katy/racecar-ws/src/final_challenge/FinalChallengePy/Vision/images/x50y200g.png")
 
     pixelPoint, worldCoord = c.getDistance(img)
 
