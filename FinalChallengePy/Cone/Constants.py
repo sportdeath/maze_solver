@@ -4,7 +4,7 @@ HSV_MIN_ORANGE = np.array([2, 150, 133])
 HSV_MAX_ORANGE = np.array([10, 254, 255])
 
 HSV_MIN_GREEN = np.array([74, 30, 30])
-HSV_MAX_GREEN = np.array([109, 133, 85])
+HSV_MAX_GREEN = np.array([100, 255, 85]) # 109
 
 RED_CONE_DIRECTION = 1
 GREEN_CONE_DIRECTION = -1

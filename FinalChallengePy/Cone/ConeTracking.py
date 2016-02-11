@@ -62,12 +62,12 @@ class ConeTracking:
         imageCv = self.bridge.imgmsg_to_cv2(image_msg)
 
         # mask top and bottom of image
-        manualMask = np.zeros(imageCv.shape, np.uint8)
-        manualMask[M_Y:M_Y+M_HEIGHT, M_X:M_X+M_WIDTH] = imageCv[M_Y:M_Y+M_HEIGHT, M_X:M_X+M_WIDTH]
+        # manualMask = np.zeros(imageCv.shape, np.uint8)
+        # manualMask[self.M_Y:self.M_Y+self.M_HEIGHT, self.M_X:self.M_X+self.M_WIDTH] = imageCv[self.M_Y:self.M_Y+self.M_HEIGHT, self.M_X:self.M_X+self.M_WIDTH]
 
         # add color thresholding
-        redThreshold = ConeThreshold(manualMask, HSV_MIN_ORANGE, HSV_MAX_ORANGE)
-        greenThreshold = ConeThreshold(manualMask, HSV_MIN_GREEN, HSV_MAX_GREEN)
+        redThreshold = ConeThreshold(imageCv, HSV_MIN_ORANGE, HSV_MAX_ORANGE)
+        greenThreshold = ConeThreshold(imageCv, HSV_MIN_GREEN, HSV_MAX_GREEN)
         
         # Uncomment for debugging purposes
         outputCombined = cv2.add(
