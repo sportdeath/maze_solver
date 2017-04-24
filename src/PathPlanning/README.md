@@ -28,9 +28,15 @@ RRT(<em>x<sub>init</sub></em>, <em>x<sub>goal</sub></em>, <em>map</em>):
   Until the time limit is reached:
     Choose a random state <em>x<sub>rand</sub></em>
     For each set of states [<em>x</em><sub>-1</sub>,<em>x</em><sub>0</sub>,<em>x</em><sub>1</sub>] ⊆ <em>path</em>:
-      If steer(<em>x</em><sub>-1</sub>,<em>x</em><sub>0</sub>) + steer(<em>x</em><sub>0</sub>,<em>x</em><sub>1</sub>) < steer(<em>x</em><sub>-1</sub>,<em>x<sub>rand</sub></em>) + steer(<em>x<sub>rand</sub></em>,<em>x</em><sub>1</sub>):
+      If |steer(<em>x</em><sub>-1</sub>,<em>x</em><sub>0</sub>)| + |steer(<em>x</em><sub>0</sub>,<em>x</em><sub>1</sub>)| < |steer(<em>x</em><sub>-1</sub>,<em>x<sub>rand</sub></em>)| + |steer(<em>x<sub>rand</sub></em>,<em>x</em><sub>1</sub>)|:
         <em>x</em><sub>0</sub> <- <em>x<sub>rand</sub></em>
   
   return <em>path</em>
 </pre>
 
+<pre>
+steer(<em>x</em>, <em>x<sub>goal</sub></em>, <em>map</em>):
+  TODO:
+  That thing with the circles
+  Fast marching with car model at state.
+</pre>
