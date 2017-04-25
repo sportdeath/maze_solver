@@ -12,9 +12,9 @@ class MapUtils:
     def getMap():
         # Get the map
         map_service_name = rospy.get_param("~static_map", "static_map")
-        rospy.loginfo("Getting map from service: %s", map_service_name)
+        rospy.loginfo("getting map from service: %s", map_service_name)
         rospy.wait_for_service(map_service_name)
-        rospy.loginfo("Got map!")
+        rospy.loginfo("map initialized")
 
         # The map message
         return rospy.ServiceProxy(map_service_name, GetMap)().map
@@ -23,7 +23,7 @@ class MapUtils:
     def getRangeLib(mapMsg):
         # Pre-compute range lib
         oMap = range_libc.PyOMap(mapMsg)
-        MAX_RANGE_METERS = 20
+        MAX_RANGE_METERS = 60
         MAX_RANGE_PX = int(MAX_RANGE_METERS / mapMsg.info.resolution)
         THETA_DISCRETIZATION = 200
         rangeLib = range_libc.PyCDDTCast(oMap, MAX_RANGE_PX, THETA_DISCRETIZATION)

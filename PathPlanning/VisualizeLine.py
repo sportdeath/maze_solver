@@ -19,13 +19,16 @@ class VisualizeLine:
 
         self.publishTransformationFrame()
 
-    def visualize(self, points, color = (1.,1.,1.)):
+    def visualize(self, points, color = (1.,1.,1.), lineList = False):
         header = Header()
         header.stamp = rospy.Time.now()
         header.frame_id = "/base_link"
 
         lineStrip = Marker()
-        lineStrip.type = Marker.LINE_STRIP
+        if lineList:
+            lineStrip.type = Marker.LINE_LIST
+        else:
+            lineStrip.type = Marker.LINE_STRIP
         lineStrip.action = Marker.ADD
         lineStrip.header = header
         lineStrip.scale.x = 0.1
