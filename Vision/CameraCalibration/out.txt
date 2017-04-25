@@ -1,0 +1,121 @@
+processing ./input/calibrate13.png... ok
+processing ./input/calibrate11.png... ok
+processing ./input/calibrate16.png... ok
+processing ./input/calibrate9.png... ok
+processing ./input/calibrate5.png... ok
+processing ./input/calibrate17.png... ok
+processing ./input/70FromBackWheelToCenter.png... chessboard not found
+processing ./input/calibrate6.png... ok
+processing ./input/desired.png... chessboard not found
+processing ./input/calibrate3.png... ok
+processing ./input/calibrate2.png... ok
+processing ./input/625FromBackWheelToCenter.png... chessboard not found
+processing ./input/calibrate12.png... ok
+processing ./input/calibrate19.png... ok
+processing ./input/635FromBackWheelToCenter.png... chessboard not found
+processing ./input/calibrate7.png... ok
+processing ./input/calibrate4.png... chessboard not found
+processing ./input/52cmfromback.png... ok
+processing ./input/53_3cmfromback.png... chessboard not found
+processing ./input/calibrate15.png... ok
+processing ./input/calibrate10.png... ok
+processing ./input/calibrate20.png... ok
+processing ./input/calibrate18.png... ok
+processing ./input/calibrate8.png... ok
+processing ./input/calibrate1.png... ok
+processing ./input/53FromBackWheelToEdge.png... ok
+processing ./input/calibrate14.png... ok
+
+RMS: 0.469789985957
+camera matrix:
+ [[ 349.50573744    0.          305.32752321]
+ [   0.          351.07542757  181.70607782]
+ [   0.            0.            1.        ]]
+distortion coefficients:  [ 0.00927612 -0.08178713  0.0017019  -0.00015986  0.07653447]
+width, height =  (672, 376)
+pixelsPerSquare:  2.50697429133
+
+[[  1.27246650e+00  -1.89981273e-01  -5.23536973e+02]
+ [ -4.90655440e-02   1.04707930e+00  -1.38727283e+02]
+ [ -1.52189886e-02   8.68500016e-03   1.63114684e+01]]
+Undistorted image written to: ./output/calibrate13_undistorted.png
+[[  9.56126649e-01   3.55718055e-01  -3.37814849e+02]
+ [ -3.72807269e-01   9.25741829e-01  -1.50522531e+01]
+ [ -5.28933273e-03  -2.67085378e-03   9.81162378e+00]]
+Undistorted image written to: ./output/calibrate11_undistorted.png
+[[  1.04227012e+00  -1.79666846e-01  -3.53145184e+02]
+ [ -1.25441710e-02   1.16056382e+00  -1.85944118e+02]
+ [ -5.83362487e-03   1.96955275e-02   1.12659099e+01]]
+Undistorted image written to: ./output/calibrate16_undistorted.png
+[[  9.18885488e-01   8.73248874e-02  -4.38733438e+02]
+ [ -1.25329524e-02   9.81155259e-01  -9.98430218e+01]
+ [  5.45166188e-03  -2.10620875e-03   5.03643922e+00]]
+Undistorted image written to: ./output/calibrate9_undistorted.png
+[[  9.77129892e-01   1.11726291e-01  -3.88847417e+02]
+ [ -1.57936905e-01   1.17220818e+00  -1.02633111e+02]
+ [  1.26408786e-03   1.17165117e-02   6.12279964e+00]]
+Undistorted image written to: ./output/calibrate5_undistorted.png
+[[  9.06756485e-01   3.05254639e-01  -4.53691597e+02]
+ [ -2.95976014e-01   9.64148660e-01  -5.83895297e+00]
+ [  4.00868828e-03   2.31556936e-03   8.29700318e+00]]
+Undistorted image written to: ./output/calibrate17_undistorted.png
+[[  1.04593250e+00   1.27836611e-01  -3.72802733e+02]
+ [ -1.41992744e-02   1.03319498e+00  -1.28345524e+02]
+ [ -6.84117560e-03  -1.44514306e-02   1.50856467e+01]]
+Undistorted image written to: ./output/calibrate6_undistorted.png
+[[  9.91959301e-01  -8.07149272e-02  -2.09038648e+02]
+ [  5.83715522e-02   1.00252366e+00  -1.93120259e+02]
+ [ -8.75937238e-03   2.13749700e-03   9.14390782e+00]]
+Undistorted image written to: ./output/calibrate3_undistorted.png
+[[  9.62345253e-01   4.76223205e-02  -3.97061754e+02]
+ [ -1.61081284e-02   9.94041204e-01  -1.30301190e+02]
+ [  4.56293608e-03  -9.85760835e-04   5.41243057e+00]]
+Undistorted image written to: ./output/calibrate2_undistorted.png
+[[  9.63166620e-01   1.47945276e-01  -2.27313579e+02]
+ [ -1.30544366e-01   1.04390514e+00  -1.24756492e+02]
+ [ -9.96338752e-03  -1.28158359e-02   1.44911895e+01]]
+Undistorted image written to: ./output/calibrate12_undistorted.png
+[[  1.02469102e+00   2.31971995e-01  -3.60707032e+02]
+ [ -3.36197803e-01   9.98086463e-01  -3.99564584e+01]
+ [ -1.26293773e-02   5.06330879e-03   1.53924761e+01]]
+Undistorted image written to: ./output/calibrate19_undistorted.png
+[[  9.06253895e-01   9.37569726e-02  -4.37783706e+02]
+ [ -4.78486702e-02   9.91935976e-01  -1.22946654e+02]
+ [  1.02382028e-02  -1.42088586e-03   4.79436107e+00]]
+Undistorted image written to: ./output/calibrate7_undistorted.png
+[[ -1.00211202e+00   3.22259469e-01   2.62818373e+02]
+ [  1.79588367e-02  -2.06451916e+00   6.36400245e+02]
+ [ -3.73476933e-04   5.72857538e-02  -7.88571358e+00]]
+Undistorted image written to: ./output/52cmfromback_undistorted.png
+[[  1.02173100e+00   9.17382900e-02  -3.50790943e+02]
+ [ -1.11652410e-01   9.97123821e-01  -1.20199835e+02]
+ [ -5.68358172e-03   5.59269654e-04   1.29436796e+01]]
+Undistorted image written to: ./output/calibrate15_undistorted.png
+[[  9.32099982e-01  -3.88175494e-01  -1.44904257e+02]
+ [  3.61575435e-01   9.07891678e-01  -1.88003870e+02]
+ [ -1.19248506e-02  -3.86666039e-03   1.12134584e+01]]
+Undistorted image written to: ./output/calibrate10_undistorted.png
+[[  1.04734829e+00  -1.66313583e-01  -1.91486868e+02]
+ [  1.94093214e-01   9.85606950e-01  -1.85562045e+02]
+ [ -1.78289822e-02  -4.44438712e-03   1.32749391e+01]]
+Undistorted image written to: ./output/calibrate20_undistorted.png
+[[  9.94684765e-01  -2.66040755e-01  -2.96718531e+02]
+ [  2.43534854e-01   9.71636815e-01  -2.17783532e+02]
+ [ -4.29698753e-03   1.53336853e-03   1.13701392e+01]]
+Undistorted image written to: ./output/calibrate18_undistorted.png
+[[  1.00416142e+00   1.57440090e-02  -3.47999018e+02]
+ [  2.79976459e-03   9.87203071e-01  -1.24223340e+02]
+ [ -6.55307439e-04  -3.30103172e-03   7.72473240e+00]]
+Undistorted image written to: ./output/calibrate8_undistorted.png
+[[  1.24829343e+00  -4.60744258e-02  -3.42892229e+02]
+ [ -3.27091947e-02   1.00613703e+00  -1.72491775e+02]
+ [ -2.92736378e-02   4.16411308e-03   1.99997653e+01]]
+Undistorted image written to: ./output/calibrate1_undistorted.png
+[[  9.81557863e-01  -3.78469419e-01  -2.51797852e+02]
+ [  5.25631620e-02   2.13890379e+00  -7.35051692e+02]
+ [  2.32526412e-03   4.80467797e-02  -8.98151652e+00]]
+Undistorted image written to: ./output/53FromBackWheelToEdge_undistorted.png
+[[  1.10791288e+00   2.21466913e-01  -3.36967716e+02]
+ [ -1.58504664e-01   9.86826645e-01  -9.10154564e+01]
+ [  1.14717462e-02   1.91234218e-03   6.03479295e+00]]
+Undistorted image written to: ./output/calibrate14_undistorted.png

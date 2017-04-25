@@ -66,7 +66,7 @@ if __name__ == '__main__':
             continue
 
         h, w = img.shape[:2]
-        found, corners = cv2.findChessboardCorners(img, pattern_size, flags=0)
+        found, corners = cv2.findChessboardCorners(img, pattern_size, flags=1)
         if found:
             # Get corners in pixel coordinates
             term = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 30, 0.1)
@@ -129,7 +129,7 @@ if __name__ == '__main__':
         H = np.matmul(Ht, Hr)
         print(H)
 
-        transform = CoordinateTransformations(H, 0)
+        transform = CoordinateTransformations(H, 0, 0)
         img2 = transform.displayCoordinatesOnWorld(img, 2.46, 30)
 
         img = cv2.warpPerspective(img,H,(w,h))

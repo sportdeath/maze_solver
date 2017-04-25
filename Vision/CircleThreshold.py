@@ -26,13 +26,6 @@ class CircleThreshold:
     def findBestContour(self):
         _, contours, _ = cv2.findContours(self.mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         self.contourPoints = [point for contour in contours for point in contour]
-        # bestArea = 0
-        #self.bestContour = []
-        #for contour in contours:
-        #    area = cv2.contourArea(contour)
-        #    if area > bestArea:
-        #        bestArea = area
-        #        self.bestContour = contour
 
     def transform(self):
         numPoints = len(self.contourPoints)
@@ -69,7 +62,7 @@ class CircleThreshold:
 if __name__ == "__main__":
     c = CircleThreshold(150)
 
-    img = cv2.imread("/home/racecar/racecar-ws/src/FinalChallenge/Vision/images/x0y100r.png")
+    img = cv2.imread("/home/racecar/racecar-ws/src/FinalChallenge/Vision/images/x50y200r.png")
 
     pixelPoint, worldCoord = c.getDistance(img)
 
