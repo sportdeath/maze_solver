@@ -33,8 +33,8 @@ class Test_RRT(VisualizeLine):
 
         tree = self.RRT.computePath(self.initialState, finalState)
 
-        self.visualize(self.RRT.treeToLineList(tree),(1.,0.,0.),True)
-        #self.visualize(self.RRT.getPoints(),(0.,1.,0.))
+        # self.visualize(self.RRT.treeToLineList(tree),(1.,0.,0.),True)
+        self.visualize(self.RRT.getPoints(),(0.,1.,0.))
 
 if __name__=="__main__":
     rospy.init_node("Test_RRT")
