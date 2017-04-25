@@ -6,17 +6,16 @@ from geometry_msgs.msg import PoseStamped
 from MapUtils import MapUtils
 from RobotState import RobotState
 from VisualizeLine import VisualizeLine
-from Steer import Steer
+from RRT import RRT
 
-class Test_Steer(VisualizeLine):
+class Test_RRT(VisualizeLine):
     def __init__(self):
-        VisualizeLine.__init__(self,"Test_Steer")
+        VisualizeLine.__init__(self,"Test_RRT")
 
         self.mapMsg = MapUtils.getMap()
-        self.rangeLib = MapUtils.getRangeLib(self.mapMsg)
-        self.rangeMethod = MapUtils.getRangeMethod(self.rangeLib, self.mapMsg)
+        self.RRT = RRT(self.mapMsg)
 
-        self.initialState = RobotState (0,0,0)
+        self.initialState = RobotState(0,0,3.14)
         
         self.clickSub = rospy.Subscriber(
                 "/move_base_simple/goal", 
@@ -32,16 +31,11 @@ class Test_Steer(VisualizeLine):
 
         finalState = RobotState(x, y, theta)
 
-        steer = Steer(self.initialState, finalState, self.rangeMethod)
+        self.RRT.computePath(self.initialState, finalState)
 
-        if steer.exists:
-            if steer.isSteerable():
-                color = (0.,1.,0.)
-            else:
-                color = (1.,0.,0.)
-            self.visualize(steer.getPoints(),color)
+        self.visualize(self.RRT.getPoints(),(0.,1.,0.))
 
 if __name__=="__main__":
     rospy.init_node("Test_RRT")
-    test_steer = Test_Steer()
+    test_rrt = Test_RRT()
     rospy.spin()
