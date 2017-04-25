@@ -53,6 +53,7 @@ class PurePursuit:
     # Returns the angle the car should steer at
     def getControlAngle(self):
         if self.x:
+            print "RESETTING CONTROL ANGLE"
             carPosition = np.array([self.x, self.y])
             goalPointWorld = self.trajectoryTracker.getGoalPointGlobal(carPosition)
             self.publish_point(goalPointWorld)
@@ -103,6 +104,7 @@ class PurePursuit:
         self.commandPub.publish(msg)
 
     def publish_point(self, point):
+        print "PUBLISHING NEW POINT"
         pose = Utils.particle_to_pose(np.concatenate((point,[0])))
         ps = PoseStamped()
         ps.header = Utils.make_header("map")

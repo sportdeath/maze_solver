@@ -61,6 +61,7 @@ from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
 from MotionModel import MotionModel
+from SensorModel import SensorModel
 
 
 class ParticleFilter():
@@ -71,12 +72,9 @@ class ParticleFilter():
         self.MAX_RANGE_METERS = float(rospy.get_param("~max_range"))
         self.MAX_RANGE_PX = None
 
-        # cddt and glt range methods are discrete, this defines number of discrete thetas
-        self.THETA_DISCRETIZATION = int(rospy.get_param("~theta_discretization"))
-        self.WHICH_RANGE_METHOD = rospy.get_param("~range_method", "cddt")
-
         # various data containers used in the MCL algorithm
         self.map_info = None
+        self.map_msg = None
         self.map_initialized = False
         self.range_method = None
 
@@ -84,8 +82,8 @@ class ParticleFilter():
         # necessary for avoiding concurrency errors
         self.state_lock = Lock()
 
-        # initialize the state
-        self.get_omap()
+        # initialize the map
+        self.initialize_map()
 
         # particle poses and weights - particles should be N by 3
         self.initializeParticles()
@@ -102,13 +100,13 @@ class ParticleFilter():
         self.pub_tf = tf.TransformBroadcaster()
 
         # these integrate with RViz
-        self.pose_sub  = rospy.Subscriber("/initialpose", PoseWithCovarianceStamped, self.clicked_pose, queue_size=1)
-        self.click_sub = rospy.Subscriber("/clicked_point", PointStamped, self.clicked_pose, queue_size=1)
+        self.pose_sub  = rospy.Subscriber("/initialpose", PoseWithCovarianceStamped, self.clicked_pose_cb, queue_size=1)
+        self.click_sub = rospy.Subscriber("/clicked_point", PointStamped, self.clicked_pose_cb, queue_size=1)
+
+        self.sensorModel = SensorModel(self.map_msg)
 
         self.motionModel = None
         self.initializeMotionModel()
-
-        self.sensorModel = SensorModel(self.range_method, self.MAX_RANGE_PX)
 
         rospy.loginfo("Finished initializing, waiting on messages...")
 
@@ -121,7 +119,7 @@ class ParticleFilter():
         mapMin = np.array([mapWidth - 1 - THRESHOLD, mapHeight - 1 - THRESHOLD, 0])
 
         mapMin = Utils.map_to_world_slow(mapMin[0], mapMin[1], mapMin[2], self.map_info)
-		mapMax = Utils.map_to_world_slow(mapMax[0], mapMax[1], mapMax[2], self.map_info)
+        mapMax = Utils.map_to_world_slow(mapMax[0], mapMax[1], mapMax[2], self.map_info)
 
         self.motionModel = MotionModel(self.update, [mapMin[0], mapMin[1], mapMax[0], mapMax[1]])
 
@@ -145,10 +143,10 @@ class ParticleFilter():
                 if self.map_msg.data[dataPoint] == 0:
                     particleTheta = np.random.uniform(low=-np.pi, high=np.pi)
                     mapCellArray = np.array([particleColumn, particleRow, particleTheta])
-                    self.particles[particleIndex,:] = Utils.map_to_world_slow(mapCellArray, self.map_info)
+                    self.particles[particleIndex,:] = Utils.map_to_world_slow(mapCellArray[0], mapCellArray[1], mapCellArray[2], self.map_info)
                     break
 
-    def get_omap(self):
+    def initialize_map(self):
         # this way you could give it a different map server as a parameter
         map_service_name = rospy.get_param("~static_map", "static_map")
         rospy.loginfo("getting map from service: %s", map_service_name)
@@ -157,26 +155,7 @@ class ParticleFilter():
         self.map_msg = map_msg
 
         self.map_info = map_msg.info
-        oMap = range_libc.PyOMap(map_msg)
-        # this value is the max range used internally in RangeLibc
-        # it also should be the size of your sensor model table
-        self.MAX_RANGE_PX = int(self.MAX_RANGE_METERS / self.map_info.resolution)
-
-        # initialize range method
-        rospy.loginfo("Initializing range method: %s", self.WHICH_RANGE_METHOD)
-        if self.WHICH_RANGE_METHOD == "bl":
-            self.range_method = range_libc.PyBresenhamsLine(oMap, self.MAX_RANGE_PX)
-        elif "cddt" in self.WHICH_RANGE_METHOD:
-            self.range_method = range_libc.PyCDDTCast(oMap, self.MAX_RANGE_PX, self.THETA_DISCRETIZATION)
-            if self.WHICH_RANGE_METHOD == "pcddt":
-                rospy.loginfo("Pruning...")
-                self.range_method.prune()
-        elif self.WHICH_RANGE_METHOD == "rm":
-            self.range_method = range_libc.PyRayMarching(oMap, self.MAX_RANGE_PX)
-        elif self.WHICH_RANGE_METHOD == "rmgpu":
-            self.range_method = range_libc.PyRayMarchingGPU(oMap, self.MAX_RANGE_PX)
-        elif self.WHICH_RANGE_METHOD == "glt":
-            self.range_method = range_libc.PyGiantLUTCast(oMap, self.MAX_RANGE_PX, self.THETA_DISCRETIZATION)
+        
         rospy.loginfo("Done loading map")
 
          # 0: permissible, -1: unmapped, large value: blocked
@@ -188,8 +167,39 @@ class ParticleFilter():
         self.permissible_region[array_255==0] = 1
         self.map_initialized = True
 
+    def clicked_pose_cb(self, msg):
+        # YOUR CODE - do something when a pose is clicked in RViz 
+        # either a PointStamped or PoseWithCovarianceStamped depending on which RViz tool is used
+        if isinstance(msg, PointStamped):
+            self.initialize_global()
+        elif isinstance(msg, PoseWithCovarianceStamped):
+            self.initialize_particles_pose(msg.pose.pose)
+
+    def initialize_global(self):
+        pass
+
+    def initialize_particles_pose(self, pose):
+        '''
+        Initialize particles in the general region of the provided pose.
+        '''
+        print "SETTING POSE"
+        print pose
+
+        print "BEFORE", self.weights
+
+        self.state_lock.acquire()
+        self.weights = np.ones(self.MAX_PARTICLES) / float(self.MAX_PARTICLES)
+
+        print "AFTER", self.weights
+        
+        self.particles[:,0] = pose.position.x + np.random.normal(loc=0.0,scale=0.5,size=self.MAX_PARTICLES)
+        self.particles[:,1] = pose.position.y + np.random.normal(loc=0.0,scale=0.5,size=self.MAX_PARTICLES)
+        self.particles[:,2] = Utils.quaternion_to_angle(pose.orientation) + np.random.normal(loc=0.0,scale=0.4,size=self.MAX_PARTICLES)
+        self.state_lock.release()
+
     def publish_tf(self, stamp=None):
         """ Publish a tf from map to base_link. """
+
         if stamp == None:
             stamp = rospy.Time.now()
         x = self.inferred_pose[0]
@@ -197,9 +207,26 @@ class ParticleFilter():
         theta = self.inferred_pose[2]
 
         position = (x, y, 0)
+        rospy.loginfo(position)
+
         orientation = tf.transformations.quaternion_from_euler(0, 0, theta)
 
-        self.pub_tf.sendTransform(position, orientation, stamp, "/base_link", "/map");
+        self.pub_tf.sendTransform(position, orientation, stamp, "/base_link", "/map")
+
+        # self.pub_tf.sendTransform(position, tf.transformations.quaternion_from_euler(0, 0, theta), 
+        #        stamp , "/laser", "/map")
+
+        # # Get map -> laser transform.
+        # map_laser_pos = np.array(position)
+        # map_laser_rotation = np.array( tf.transformations.quaternion_from_euler(0, 0, theta) )
+        # # Apply laser -> base_link transform to map -> laser transform
+        # # This gives a map -> base_link transform
+        # laser_base_link_offset = (0.265, 0, 0)
+        # map_laser_pos -= np.dot(tf.transformations.quaternion_matrix(tf.transformations.unit_vector(map_laser_rotation))[:3,:3], laser_base_link_offset).T
+
+        # # Publish transform
+        # self.pub_tf.sendTransform(map_laser_pos, map_laser_rotation, stamp , "/laser", "/map")
+
 
     def visualize(self):
         self.publish_tf()
@@ -241,7 +268,7 @@ class ParticleFilter():
 
     def publish_scan(self, angles, ranges):
         ls = LaserScan()
-        ls.header = Utils.make_header("laser", stamp=self.last_stamp)
+        ls.header = Utils.make_header("map", stamp=self.last_stamp)
         ls.angle_min = np.min(angles)
         ls.angle_max = np.max(angles)
         ls.angle_increment = np.abs(angles[0] - angles[1])
@@ -256,7 +283,7 @@ class ParticleFilter():
 
 
     def update(self):
-        if sensor_model.lidar_initialized() and self.map_initialized:
+        if self.sensorModel.lidarInitialized() and self.map_initialized:
             if self.state_lock.locked():
                 rospy.loginfo("Concurrency error avoided")
             else:
@@ -268,8 +295,8 @@ class ParticleFilter():
                 # Update with motion model
                 self.particles = self.motionModel.updateDistribution(self.particles)
 
-                self.sensorModel.updateSensorModel(self.particles, self.weights)    # observation is the lidar data
-                
+                self.weights = self.sensorModel.updateSensorModel(self.particles, self.weights)    # observation is the lidar data
+
                 self.inferred_pose = self.expected_pose()
                 
                 self.state_lock.release()
