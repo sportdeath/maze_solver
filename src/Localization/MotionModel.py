@@ -8,9 +8,7 @@ class MotionModel:
     def __init__(self, updateModelFunction, mapBoundaries):
         self.updateModelFunction = updateModelFunction
 
-        self.x = np.float32(0)
-        self.y = np.float32(0)
-        self.theta = np.float32(0)
+        (self.x, self.y, self.theta) = (np.float32(0), np.float32(0), np.float32(0))
 
         self.mapMinX = np.float32(mapBoundaries[0])
         self.mapMinY = np.float32(mapBoundaries[1])
@@ -37,15 +35,15 @@ class MotionModel:
         y = np.float32(msg.pose.pose.position.y)
         theta = np.float32(Utils.quaternion_to_angle(msg.pose.pose.orientation))
 
-        self.dx = x - self.x
-        self.dy = y - self.y
-        self.dTheta = theta - self.theta
+        (self.dx, self.dy, self.dTheta) = np.array([x, y, theta]) - np.array([self.x, self.y, self.theta])
 
         [self.x, self.y, self.theta] = [x, y, theta]
 
         # This topic is slower than lidar.
         # Use this to update MCL
         self.updateModelFunction()
+
+    def updateDistribution(self, particleDistribution):
 
     # particleDistribution - array of size Nx3
     # action - a list of size 1x3
@@ -54,7 +52,6 @@ class MotionModel:
     # action is [x, y, theta]
     #
     # returns - an array of size Nx3
-    def updateDistribution(self, particleDistribution):
 
         # book-keeping
         columnHeight = particleDistribution.shape[0]
@@ -80,14 +77,27 @@ class MotionModel:
                 scale = self.stdDevSlope[1] * abs(self.dy) + self.stdDevOffset[1],
                 size = (columnHeight,1)
                 ).astype(np.float32);
+                
+        # Generate noise for dTheta
+        # and center it around dTheta to get the
+        # the theta differential vector
+        thetaDifferential = np.random.normal(
+                loc = self.dTheta, 
+                scale = self.stdDevSlope[2] * abs(self.dTheta) + self.stdDevOffset[2],
+                size = (columnHeight,1)
+                ).astype(np.float32);
 
         # Make matrices whose rows rotate
         # the global position differential into the
         # particle frame of reference
         #
         # Ideally we want to apply noise of the form
-        # (dx+epsilon). To add this particle-wise, we
-        # add the noise to the rotation component.
+        # (dx+epsilon) where epsilon is the noise term. 
+        # To add this noise particle-wise, we
+        # add the noise to the rotation component rather
+        # than applying the noise and then applying the rotation.
+        # This allows us to add noise and rotate with a single
+        # matrix multiplication.
         # For example, in the absence of noise if we wanted
         # the rotation component to be cos(theta) we
         # compute the new rotation component as
@@ -106,7 +116,7 @@ class MotionModel:
             xNoiseFactor = xNoise
             self.dx = 1
         if self.dy != 0:
-            yNoiseFactor = 1 + xNoise/self.dy
+            yNoiseFactor = 1 + yNoise/self.dy
         else:
             yNoiseFactor = yNoise
             self.dy = 1
@@ -128,26 +138,21 @@ class MotionModel:
 
         # Multiply by the differential vector
         # by the rotation matrices
-        positionDifferential = np.array([[self.dx], [self.dy]])
-        xDifferential = np.matmul(xRotation, positionDifferential)
-        yDifferential = np.matmul(yRotation, positionDifferential)
-
-        # Add noise to dTheta
-        thetaDifferential = np.random.normal(
-                loc = self.dTheta, 
-                scale = self.stdDevSlope[2] * abs(self.dTheta) + self.stdDevOffset[2],
-                size = (columnHeight,1)
-                ).astype(np.float32);
+        dPosition = np.array([[self.dx], [self.dy]])
+        # The change in x with noise
+        xDifferential = np.dot(xRotation, dPosition)
+        # The change in y with noise
+        yDifferential = np.dot(yRotation, dPosition)
 
         # Concatenate the various differentials
         # into a total action differential
-        actionDifferential = np.concatenate((
+        action = np.concatenate((
             xDifferential, 
             yDifferential, 
             thetaDifferential
             ), axis=1)
 
-        newParticleDistribution = particleDistribution + actionDifferential
+        newParticleDistribution = particleDistribution + action
 
         newParticleDistribution[:,0] = np.clip(newParticleDistribution[:,0], self.mapMinX, self.mapMaxX)
         newParticleDistribution[:,1] = np.clip(newParticleDistribution[:,1], self.mapMinY, self.mapMaxY)
