@@ -5,10 +5,10 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped
 
-from MapUtils import MapUtils
-from RobotState import RobotState
-from VisualizeLine import VisualizeLine
-from Steer import Steer
+from FinalChallengePy.PathPlanning.MapUtils import MapUtils
+from FinalChallengePy.PathPlanning.RobotState import RobotState
+from FinalChallengePy.PathPlanning.VisualizeLine import VisualizeLine
+from FinalChallengePy.PathPlanning.Steer import Steer
 
 class Test_Steer(VisualizeLine):
     def __init__(self):

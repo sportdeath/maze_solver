@@ -1,8 +1,8 @@
 import numpy as np
 
-from Steer import Steer
-from RobotState import RobotState
-from MapUtils import MapUtils
+from FinalChallengePy.PathPlanning.Steer import Steer
+from FinalChallengePy.PathPlanning.RobotState import RobotState
+from FinalChallengePy.PathPlanning.MapUtils import MapUtils
 
 class RRTNode:
     def __init__(self, state, cost, parent):

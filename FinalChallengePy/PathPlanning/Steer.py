@@ -1,4 +1,4 @@
-from CarConstants import *
+from FinalChallengePy.CarConstants import *
 import numpy as np
 
 MIN_RADIUS = np.tan(MAX_STEERING_ANGLE)/CAR_AXLE_DISTANCE

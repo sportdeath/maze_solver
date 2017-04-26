@@ -1,5 +1,5 @@
 # The velocity of the car
-CAR_VELOCITY = 2.5 # meters/seconds
+CAR_VELOCITY = 1. # meters/seconds
 
 # measured from the
 # center of the front wheel axle 

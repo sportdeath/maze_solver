@@ -3,10 +3,10 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 
-from MapUtils import MapUtils
-from RobotState import RobotState
-from VisualizeLine import VisualizeLine
-from RRT import RRT
+from FinalChallengePy.PathPlanning.MapUtils import MapUtils
+from FinalChallengePy.PathPlanning.RobotState import RobotState
+from FinalChallengePy.PathPlanning.VisualizeLine import VisualizeLine
+from FinalChallengePy.PathPlanning.RRT import RRT
 
 class Test_RRT(VisualizeLine):
     def __init__(self):
@@ -35,7 +35,7 @@ class Test_RRT(VisualizeLine):
 
         # self.visualize(self.RRT.treeToLineList(tree),(1.,0.,0.),True)
         (forwardPoints, backwardsPoints) = self.RRT.getLineLists()
-        self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=0,lineList=False)
+        self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=0,lineList=True)
         self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)
 
 if __name__=="__main__":

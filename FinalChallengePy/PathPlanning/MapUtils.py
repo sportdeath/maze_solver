@@ -23,10 +23,12 @@ class MapUtils:
     def getRangeLib(mapMsg):
         # Pre-compute range lib
         oMap = range_libc.PyOMap(mapMsg)
+        rospy.loginfo("initializing range_libc...")
         MAX_RANGE_METERS = 60
         MAX_RANGE_PX = int(MAX_RANGE_METERS / mapMsg.info.resolution)
         THETA_DISCRETIZATION = 200
         rangeLib = range_libc.PyCDDTCast(oMap, MAX_RANGE_PX, THETA_DISCRETIZATION)
+        rospy.loginfo("pruning...")
         rangeLib.prune()
         rospy.loginfo("range_libc initialized")
         return rangeLib

@@ -155,21 +155,12 @@ class ParticleFilter():
         self.map_msg = map_msg
 
         self.map_info = map_msg.info
+
+        self.map_initialized = True
         
         rospy.loginfo("Done loading map")
 
-         # 0: permissible, -1: unmapped, large value: blocked
-        array_255 = np.array(map_msg.data).reshape((map_msg.info.height, map_msg.info.width))
-
-        # 0: not permissible, 1: permissible
-        # this may be useful for global particle initialization - don't initialize particles in non-permissible states
-        self.permissible_region = np.zeros_like(array_255, dtype=bool)
-        self.permissible_region[array_255==0] = 1
-        self.map_initialized = True
-
     def clicked_pose_cb(self, msg):
-        # YOUR CODE - do something when a pose is clicked in RViz 
-        # either a PointStamped or PoseWithCovarianceStamped depending on which RViz tool is used
         if isinstance(msg, PointStamped):
             self.initialize_global()
         elif isinstance(msg, PoseWithCovarianceStamped):
@@ -199,7 +190,6 @@ class ParticleFilter():
 
     def publish_tf(self, stamp=None):
         """ Publish a tf from map to base_link. """
-
         if stamp == None:
             stamp = rospy.Time.now()
         x = self.inferred_pose[0]
@@ -207,26 +197,10 @@ class ParticleFilter():
         theta = self.inferred_pose[2]
 
         position = (x, y, 0)
-        rospy.loginfo(position)
 
         orientation = tf.transformations.quaternion_from_euler(0, 0, theta)
 
         self.pub_tf.sendTransform(position, orientation, stamp, "/base_link", "/map")
-
-        # self.pub_tf.sendTransform(position, tf.transformations.quaternion_from_euler(0, 0, theta), 
-        #        stamp , "/laser", "/map")
-
-        # # Get map -> laser transform.
-        # map_laser_pos = np.array(position)
-        # map_laser_rotation = np.array( tf.transformations.quaternion_from_euler(0, 0, theta) )
-        # # Apply laser -> base_link transform to map -> laser transform
-        # # This gives a map -> base_link transform
-        # laser_base_link_offset = (0.265, 0, 0)
-        # map_laser_pos -= np.dot(tf.transformations.quaternion_matrix(tf.transformations.unit_vector(map_laser_rotation))[:3,:3], laser_base_link_offset).T
-
-        # # Publish transform
-        # self.pub_tf.sendTransform(map_laser_pos, map_laser_rotation, stamp , "/laser", "/map")
-
 
     def visualize(self):
         self.publish_tf()
@@ -237,8 +211,7 @@ class ParticleFilter():
 
             ps = PoseStamped()
             ps.header = Utils.make_header("map")
-            # FILL OUT THE POSE 
-            # Utils.angle_to_quaternion() will probably be useful
+
             ps.pose = Pose(Point(x, y, 0), Utils.angle_to_quaternion(theta))
             self.pose_pub.publish(ps)
 
@@ -281,7 +254,6 @@ class ParticleFilter():
     def expected_pose(self):
         return np.average(self.particles, axis=0, weights=self.weights)
 
-
     def update(self):
         if self.sensorModel.lidarInitialized() and self.map_initialized:
             if self.state_lock.locked():
@@ -289,13 +261,18 @@ class ParticleFilter():
             else:
                 self.state_lock.acquire()
                 
-                self.particle_indices = np.random.choice(np.arange(self.MAX_PARTICLES),self.MAX_PARTICLES,replace=True,p=self.weights)
+                self.particle_indices = np.random.choice(
+                        np.arange(self.MAX_PARTICLES),
+                        self.MAX_PARTICLES,
+                        replace=True,
+                        p=self.weights)
+
                 self.particles = self.particles[self.particle_indices, :]
                 
                 # Update with motion model
                 self.particles = self.motionModel.updateDistribution(self.particles)
 
-                self.weights = self.sensorModel.updateSensorModel(self.particles, self.weights)    # observation is the lidar data
+                self.weights = self.sensorModel.updateSensorModel(self.particles, self.weights)    
 
                 self.inferred_pose = self.expected_pose()
                 

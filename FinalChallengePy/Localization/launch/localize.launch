@@ -4,15 +4,15 @@
 
 	<arg name="scan_topic" default="/scan"/>
 	<arg name="odometry_topic" default="/odom"/>
-	<arg name="max_particles" default="4000"/>
+	<arg name="max_particles" default="1000"/>
 	
 	<node pkg="final_challenge" type="particle_filter.py" name="Particle_filter" output="screen">
 		<param name="scan_topic" value="$(arg scan_topic)"/>
 		<param name="odometry_topic" value="$(arg odometry_topic)"/>
 		<param name="max_particles" value="$(arg max_particles)"/>
 		<param name="max_viz_particles" value="100"/>
-		<param name="range_method" value="cddt"/>
 
+		<param name="range_method" value="pcddt"/>
 		<param name="theta_discretization" value="108"/>
 		<!-- max sensor range in meters -->
 		<param name="max_range" value="10"/> 
