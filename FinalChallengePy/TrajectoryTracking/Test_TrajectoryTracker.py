@@ -11,6 +11,7 @@ from FinalChallengePy.PathPlanning.VisualizeLine import VisualizeLine
 from FinalChallengePy.PathPlanning.RRT import RRT
 
 from FinalChallengePy.TrajectoryTracking.TrajectoryTracker import TrajectoryTracker
+from FinalChallengePy.TrajectoryTracking.Constants import *
 
 class Test_TrajectoryTracker(VisualizeLine):
     def __init__(self):
@@ -50,9 +51,12 @@ class Test_TrajectoryTracker(VisualizeLine):
 
         self.state = RobotState(x, y, theta)
 
+        # Move state backwards
+        self.state.lidarToRearAxle()
+
         if self.trajectoryTracker:
             velocity, angle = self.trajectoryTracker.getControlAngle(
-                    self.state, 
+                    self.state,
                     self.goalPointVisualizer)
 
             header = Header()
@@ -81,7 +85,7 @@ class Test_TrajectoryTracker(VisualizeLine):
         self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)
 
         # follow the path to that tree
-        self.trajectoryTracker = TrajectoryTracker(self.RRT.getPoints(True))
+        self.trajectoryTracker = TrajectoryTracker(self.RRT.getPaths(True,LOOK_AHEAD_DISTANCE))
 
 if __name__=="__main__":
     rospy.init_node("Test_TrajectoryTracker")

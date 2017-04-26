@@ -123,32 +123,32 @@ class RRT:
         forwardList = []
         backwardList = []
 
-        points = self.getPoints(True)
+        paths = self.getPaths(oriented = True)
 
-        for i in xrange(len(points)):
-            point = points[i]
-            if point[1]:
+        for path in paths:
+            if path[1]:
                 l = backwardList
             else:
                 l = forwardList
-            l.append(point[0])
-            if i > 0 and i < len(points) - 1:
-                if points[i-1][1] == point[1] == points[i+1][1]:
-                    l.append(point[0])
+            points = path[0]
+            for i in xrange(len(points)):
+                l.append(points[i])
+                if i != 0 and i != len(points) - 1:
+                    l.append(points[i])
 
         return (forwardList, backwardList)
 
-    def getPoints(self, oriented=False):
-        points = []
+    def getPaths(self, oriented=False, goalExtension=0.):
+        paths = []
         previousNode = self.path[0]
 
         for i in xrange(1,len(self.path)):
             node = self.path[i]
             steer = Steer(previousNode.state, node.state, self.rangeMethod)
-            points += steer.getPoints(oriented)
+            paths.append(steer.getPoints(oriented, goalExtension))
             previousNode = node
 
-        return points
+        return paths
 
     def optimize(self, backwards):
         if len(self.path) < 3:

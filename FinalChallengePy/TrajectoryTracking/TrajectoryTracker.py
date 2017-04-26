@@ -3,52 +3,58 @@ import numpy as np
 from FinalChallengePy.TrajectoryTracking.PurePursuit import PurePursuit
 from FinalChallengePy.CarConstants import *
 
-LOOK_AHEAD_DISTANCE = 0.5
-LOOK_AHEAD_DISTANCE_SQUARED = LOOK_AHEAD_DISTANCE * LOOK_AHEAD_DISTANCE
-THRESHOLD = 0.2
+from FinalChallengePy.TrajectoryTracking.Constants import *
 
 class TrajectoryTracker:
-    def __init__(self, points):
-        self.points = points
+    def __init__(self, paths):
+        self.paths = paths # [(points, orientation)...]
         self.pointIndex = 0
-        self.completed = False
+        self.pathIndex = 0
 
     """
     returns (velocity, angle)
     """
     def getControlAngle(self, state, visualizeMethod=None):
-        if self.completed:
+        if self.pathIndex >= len(self.paths):
             return (0,0)
+
+        path = self.paths[self.pathIndex]
+        points = path[0]
+        backwards = path[1]
 
         goalPointGlobal, self.pointIndex = PurePursuit.pickClosestPoint(
                 state.getPosition(), 
                 LOOK_AHEAD_DISTANCE_SQUARED,
-                self.points,
+                points,
                 self.pointIndex)
 
         # If we are at the end!
-        if self.pointIndex == len(self.points) - 1:
-            if np.linalg.norm(goalPointGlobal - state.getPosition()) < THRESHOLD:
-                self.completed = True
+        if self.pointIndex == len(points) - 1:
+            if np.linalg.norm(goalPointGlobal - state.getPosition()) <= LOOK_AHEAD_DISTANCE:
+                self.pathIndex += 1
+                self.pointIndex = 0
                 return (0,0)
-
-        goalPointLocal = PurePursuit.globalPointToLocal(state, goalPointGlobal)
 
         if visualizeMethod:
             TrajectoryTracker.visualize(state, goalPointGlobal, visualizeMethod)
 
-        velocity = np.sign(goalPointLocal[1]) * CAR_VELOCITY
+        # If we are going backwards
+        # we are driving from the goal to state
+        #if backwards:
+        #    state, goalPointGlobal = goalPointGlobal, state
+
+        goalPointLocal = PurePursuit.globalPointToLocal(state, goalPointGlobal)
+
+        velocity = CAR_VELOCITY
+        if backwards:
+            velocity *= -1.
         angle = PurePursuit.getAckermannAngle(goalPointLocal)
 
         return (velocity, angle)
 
 
     @staticmethod
-    def visualize(
-            state,
-            goalPointGlobal,
-            visualizeMethod
-            ):
+    def visualize(state, goalPointGlobal, visualizeMethod):
 
         points = []
 

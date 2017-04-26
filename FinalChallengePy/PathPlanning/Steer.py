@@ -13,6 +13,7 @@ class Steer:
     backwards = False
 
     def __init__(self, init, goal, rangeMethod):
+        self.goal = goal
         if goal.isBackwards():
             init, goal=goal, init
             self.backwards = True
@@ -142,7 +143,7 @@ class Steer:
             goalAngle += 2 * np.pi
         return goalAngle - initAngle
 
-    def getPoints(self, oriented = False):
+    def getPoints(self, oriented=False, goalExtension=0.):
         points = []
 
         # points.append(self.init.getPosition())
@@ -166,13 +167,22 @@ class Steer:
                 self.goalStartAngle,
                 self.goalAngle,
                 self.goalSide)
-
-        if oriented:
-            for i in xrange(len(points)):
-                points[i] = (points[i],self.backwards)
         
         if self.backwards:
             points.reverse()
+
+        points.append(self.goal.getPosition())
+
+        extension = 0
+        while extension < goalExtension:
+            extension += POINT_SPACING
+            offset = extension * self.goal.getOrientation()
+            if self.backwards:
+                offset *= -1.
+            points.append(offset + self.goal.getPosition())
+
+        if oriented:
+            return (points, self.backwards)
 
         return points
 

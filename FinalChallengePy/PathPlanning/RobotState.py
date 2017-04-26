@@ -1,4 +1,5 @@
 import numpy as np
+from FinalChallengePy.CarConstants import *
 
 class RobotState:
     def __init__(self, x, y, theta, backwards=False):
@@ -15,6 +16,9 @@ class RobotState:
     
     def getPosition(self):
         return self.position
+
+    def lidarToRearAxle(self):
+        self.position = self.position - DISTANCE_FROM_REAR_AXLE_TO_LIDAR * self.orientation
 
     def getOrientation(self):
         return self.orientation
