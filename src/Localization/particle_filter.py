@@ -65,16 +65,12 @@ from MotionModel import MotionModel
 
 class ParticleFilter():
     def __init__(self):
-        self.lidar_initialized = False
-        self.laser_angles = None
-
-        self.first_sensor_update = True
-
         # parameters
         self.MAX_PARTICLES = int(rospy.get_param("~max_particles"))
         self.MAX_VIZ_PARTICLES = int(rospy.get_param("~max_viz_particles"))
         self.MAX_RANGE_METERS = float(rospy.get_param("~max_range"))
         self.MAX_RANGE_PX = None
+
         # cddt and glt range methods are discrete, this defines number of discrete thetas
         self.THETA_DISCRETIZATION = int(rospy.get_param("~theta_discretization"))
         self.WHICH_RANGE_METHOD = rospy.get_param("~range_method", "cddt")
@@ -88,32 +84,14 @@ class ParticleFilter():
         # necessary for avoiding concurrency errors
         self.state_lock = Lock()
 
-        # when possible, use these variables to cache large arrays and only make them once
-        self.queries = None     
-        self.ranges = None
-        self.sensor_model_table = None
-
         # initialize the state
         self.get_omap()
-        self.METERS_PER_PIXEL = self.MAX_RANGE_METERS / float(self.MAX_RANGE_PX)
 
         # particle poses and weights - particles should be N by 3
         self.initializeParticles()
+
         # uniform prior
         self.weights = np.ones(self.MAX_PARTICLES) / float(self.MAX_PARTICLES)
-        # initialize temporary array for MCL manipulation
-        # same size as particles
-        self.temp_particles = np.zeros((self.MAX_PARTICLES, 3))
-        # updated action from motion model
-        # init as array size of particles because will add np.array
-        self.act_update = np.zeros((self.MAX_PARTICLES, 3))
-        # updated weights from sensor model
-        # init as array size of weights
-        self.obs_update = np.ones(self.MAX_PARTICLES)/float(self.MAX_PARTICLES)
-
-        self.sensor_model_table = self.precompute_sensor_model()
-        # upload the sensor model to RangeLib for ultra fast resolution later
-        self.range_method.set_sensor_model(self.sensor_model_table)
 
         # these topics are for visualization, feel free to add, remove, or change as you see fit
         self.pose_pub      = rospy.Publisher("/pf/viz/inferred_pose", PoseStamped, queue_size = 1)
@@ -123,18 +101,16 @@ class ParticleFilter():
         # use this for your inferred transformations
         self.pub_tf = tf.TransformBroadcaster()
 
-        # these topics are to receive data from the racecar
-        self.laser_sub = rospy.Subscriber(rospy.get_param("~scan_topic", "/scan"), LaserScan, self.lidarCB, queue_size=1)
-        
         # these integrate with RViz
         self.pose_sub  = rospy.Subscriber("/initialpose", PoseWithCovarianceStamped, self.clicked_pose, queue_size=1)
         self.click_sub = rospy.Subscriber("/clicked_point", PointStamped, self.clicked_pose, queue_size=1)
 
+        self.motionModel = None
         self.initializeMotionModel()
 
+        self.sensorModel = SensorModel(self.range_method, self.MAX_RANGE_PX)
+
         rospy.loginfo("Finished initializing, waiting on messages...")
-        rospy.loginfo(self.MAX_RANGE_PX)
-        rospy.loginfo(self.METERS_PER_PIXEL)
 
     def initializeMotionModel(self):
         mapWidth = self.map_info.width
@@ -144,114 +120,10 @@ class ParticleFilter():
         mapMax = np.array([THRESHOLD,THRESHOLD,0])
         mapMin = np.array([mapWidth - 1 - THRESHOLD, mapHeight - 1 - THRESHOLD, 0])
 
-        mapMin = self.mapCoordinatesToMeters(mapMin)
-        mapMax = self.mapCoordinatesToMeters(mapMax)
+        mapMin = Utils.map_to_world_slow(mapMin[0], mapMin[1], mapMin[2], self.map_info)
+		mapMax = Utils.map_to_world_slow(mapMax[0], mapMax[1], mapMax[2], self.map_info)
 
         self.motionModel = MotionModel(self.update, [mapMin[0], mapMin[1], mapMax[0], mapMax[1]])
-
-    def precompute_sensor_model(self):
-        TableType = np.float64
-        GROUND_TRUTH_STD_DEV = TableType(10)
-        SHORT_MEASUREMENT_OFFSET = TableType(0.025)
-        SPIKE_HEIGHT = TableType(0.07)
-        RANDOM_MEASUREMENT_OFFSET = TableType(0.007)
-        tableWidth = int(self.MAX_RANGE_PX) + 1
-
-        # 1/(sigma * sqrt(2*pi))
-        GAUSSIAN_CONSTANT = 1./(GROUND_TRUTH_STD_DEV * np.sqrt(2*np.pi))
-
-        sensorModelTable = np.zeros((tableWidth, tableWidth), dtype=TableType)
-
-        # Populate the table
-        for groundTruthIndex in xrange(tableWidth):
-            for measuredIndex in xrange(tableWidth):
-                # Ground truth probability
-                # A Gaussian centered around ground truth
-                value = GAUSSIAN_CONSTANT * \
-                        np.exp(-np.power(measuredIndex - groundTruthIndex,2) \
-                        /(2 * np.power(GROUND_TRUTH_STD_DEV, 2)))
-
-                # Short measurement probability
-                # A line that is zero at ground Truth
-                # and increases as the measurement increases
-                if measuredIndex < groundTruthIndex:
-                    distanceToTruth = groundTruthIndex - measuredIndex
-                    value += SHORT_MEASUREMENT_OFFSET * \
-                           distanceToTruth/groundTruthIndex
-
-                # Missed measurement probability
-                # A spike at SPIKE_THRESHOLD with 
-                if tableWidth - 1 ==  measuredIndex:
-                    value += SPIKE_HEIGHT
-
-                # Random measurement probability
-                value += RANDOM_MEASUREMENT_OFFSET
-
-                # Put the value in the table
-                sensorModelTable[measuredIndex, groundTruthIndex] = TableType(value)
-
-        # Normalize each column (each ground truth value)
-        sensorModelTable = \
-                sensorModelTable/ \
-                np.sum(sensorModelTable, axis=0)
-
-        return sensorModelTable
-
-    def visualize_sensor_model_table(self):
-        # code to generate visualizations of the sensor model
-        if True:
-            # visualize the sensor model
-            fig = plt.figure()
-            ax = fig.gca(projection='3d')
-            table_width = np.shape(self.sensor_model_table)[0]
-
-            # Make data.
-            X = np.arange(0, table_width, 1.0)
-            Y = np.arange(0, table_width, 1.0)
-            X, Y = np.meshgrid(X, Y)
-
-            # Plot the surface.
-            surf = ax.plot_surface(X, Y, self.sensor_model_table, cmap="bone", rstride=2, cstride=2,
-                                   linewidth=0, antialiased=True)
-
-            ax.text2D(0.05, 0.95, "Precomputed Sensor Model", transform=ax.transAxes)
-            ax.set_xlabel('Ground truth distance (in px)')
-            ax.set_ylabel('Measured Distance (in px)')
-            ax.set_zlabel('P(Measured Distance | Ground Truth)')
-
-            plt.show()
-        elif False:
-            plt.imshow(self.sensor_model_table * 255, cmap="gray")
-            plt.show()
-        elif False:
-            plt.plot(self.sensor_model_table[:,140])
-            plt.plot([139,139],[0.0,0.08], label="test")
-            plt.ylim(0.0, 0.08)
-            plt.xlabel("Measured Distance (in px)")
-            plt.ylabel("P(Measured Distance | Ground Truth Distance = 140px)")
-            plt.show()
-
-    def sensor_model(self):
-
-        # only allocate buffers once to avoid slowness
-        if self.first_sensor_update:
-            # Initialize and store any large reused arrays here
-            self.angles = np.arange(self.ANGLE_MIN, self.ANGLE_MAX, 10*self.ANGLE_INCREMENT, dtype=np.float32)
-            self.ranges = np.zeros(self.angles.shape[0]*self.MAX_PARTICLES, dtype=np.float32)
-            self.first_sensor_update = False
-
-        obs = np.float32(self.scan_data[::10])
-
-        self.range_method.calc_range_repeat_angles(self.particles, self.angles, self.ranges)
-        self.range_method.eval_sensor_model(obs, self.ranges, self.weights, self.angles.shape[0], self.MAX_PARTICLES)
-        
-        # for calc_range_repeat_angles all ranges for a single particle are next to each other, so the quickly changing axis is angles
-        # if you have 6 particles, each of which does 3 ray casts (obviously you will have more) it would be like this:
-        # ranges: [p1a1,p1a2,p1a3,p2a1,p2a2,p2a3,p3a1,p3a2,p3a3,p4a1,p4a2,p4a3,p5a1,p5a2,p5a3,p6a1,p6a2,p6a3]
-        
-        # input to ranges and queries must be continous float32 numpy arrays
-
-        self.weights = self.weights/np.sum(self.weights)
 
     def initializeParticles(self):
         mapWidth = self.map_info.width
@@ -273,16 +145,8 @@ class ParticleFilter():
                 if self.map_msg.data[dataPoint] == 0:
                     particleTheta = np.random.uniform(low=-np.pi, high=np.pi)
                     mapCellArray = np.array([particleColumn, particleRow, particleTheta])
-                    self.particles[particleIndex,:] = self.mapCoordinatesToMeters(mapCellArray)
+                    self.particles[particleIndex,:] = Utils.map_to_world_slow(mapCellArray, self.map_info)
                     break
-
-    def mapCoordinatesToMeters(self, mapCellArray):
-        origin = self.map_info.origin.position
-        metersArray = np.array([mapCellArray[0]*self.map_info.resolution, mapCellArray[1]*self.map_info.resolution,mapCellArray[2]])
-        mirroredArray = metersArray - np.array([origin.x, origin.y, origin.z])
-        mirroredArray[0] = -mirroredArray[0]
-        mirroredArray[1] = -mirroredArray[1]
-        return mirroredArray
 
     def get_omap(self):
         # this way you could give it a different map server as a parameter
@@ -362,7 +226,6 @@ class ParticleFilter():
             # generate the scan from the point of view of the inferred position for visualization
             # this should always align with the map, if not then you are probably using RangeLibc wrong 
             # or you have a coordinate space issue
-            rospy.loginfo("FAKE NEWS")
             self.viz_queries[:,0] = self.inferred_pose[0]
             self.viz_queries[:,1] = self.inferred_pose[1]
             self.viz_queries[:,2] = self.downsampled_angles + self.inferred_pose[2]
@@ -387,35 +250,13 @@ class ParticleFilter():
         ls.ranges = ranges
         self.pub_fake_scan.publish(ls)
 
-    def lidarCB(self, msg):
-        if not isinstance(self.laser_angles, np.ndarray):
-            rospy.loginfo("...Received first LiDAR message")
-            
-            self.laser_angles = np.arange(msg.angle_min, msg.angle_max, msg.angle_increment)
-            self.viz_queries = None
-            self.scan_data = None
-            self.ANGLE_MIN = msg.angle_min
-            self.ANGLE_MAX = msg.angle_max
-            self.ANGLE_INCREMENT = msg.angle_increment
-
-        # store anything used in MCL update
-        self.scan_data = np.minimum(msg.ranges, msg.range_max)
-        rospy.loginfo("scan data:")
-        rospy.loginfo(self.scan_data)
-        self.lidar_initialized = True
-
-    def clicked_pose(self, msg):
-        # YOUR CODE - do something when a pose is clicked in RViz 
-        # either a PointStamped or PoseWithCovarianceStamped depending on which RViz tool is used
-        pass
-
     # returns the expected value of the pose given the particle distribution
     def expected_pose(self):
         return np.average(self.particles, axis=0, weights=self.weights)
 
 
     def update(self):
-        if self.lidar_initialized and self.map_initialized:
+        if sensor_model.lidar_initialized() and self.map_initialized:
             if self.state_lock.locked():
                 rospy.loginfo("Concurrency error avoided")
             else:
@@ -427,7 +268,7 @@ class ParticleFilter():
                 # Update with motion model
                 self.particles = self.motionModel.updateDistribution(self.particles)
 
-                self.sensor_model()    #observation is the lidar data
+                self.sensorModel.updateSensorModel(self.particles, self.weights)    # observation is the lidar data
                 
                 self.inferred_pose = self.expected_pose()
                 
@@ -439,4 +280,3 @@ if __name__=="__main__":
     rospy.init_node("particle_filter")
     pf = ParticleFilter()
     rospy.spin()
-s
