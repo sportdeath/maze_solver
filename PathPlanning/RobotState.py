@@ -1,10 +1,17 @@
 import numpy as np
 
 class RobotState:
-    def __init__(self, x, y, theta):
+    def __init__(self, x, y, theta, backwards=False):
         self.position = np.array([x, y])
         self.theta = theta
         self.orientation = np.array([np.cos(theta), np.sin(theta)])
+        self.backwards = backwards
+
+    def getX(self):
+        return self.position[0]
+
+    def getY(self):
+        return self.position[1]
     
     def getPosition(self):
         return self.position
@@ -15,3 +22,5 @@ class RobotState:
     def getTheta(self):
         return self.theta
 
+    def isBackwards(self):
+        return self.backwards

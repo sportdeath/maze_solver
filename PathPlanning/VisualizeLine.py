@@ -8,18 +8,20 @@ import tf.transformations
 import tf
 
 class VisualizeLine:
-    def __init__(self, topicName):
-        self.publisher = rospy.Publisher(
-                topicName,
-                Marker,
-                queue_size=1)
+    def __init__(self, topicName, numPublishers = 1):
+        self.publishers = []
+        for i in xrange(numPublishers):
+            self.publishers.append(rospy.Publisher(
+                    topicName+str(i),
+                    Marker,
+                    queue_size=1))
 
         self.transformationFramePublisher =\
                 tf.TransformBroadcaster()
 
         self.publishTransformationFrame()
 
-    def visualize(self, points, color = (1.,1.,1.), lineList = False):
+    def visualize(self, points, color = (1.,1.,1.), lineList = False, publisherIndex = 0):
         header = Header()
         header.stamp = rospy.Time.now()
         header.frame_id = "/base_link"
@@ -45,7 +47,7 @@ class VisualizeLine:
             p.z = 0.0001
             lineStrip.points.append(p)
 
-        self.publisher.publish(lineStrip)
+        self.publishers[publisherIndex].publish(lineStrip)
 
         self.publishTransformationFrame()
 

@@ -10,12 +10,12 @@ from RRT import RRT
 
 class Test_RRT(VisualizeLine):
     def __init__(self):
-        VisualizeLine.__init__(self,"Test_RRT")
+        VisualizeLine.__init__(self,"Test_RRT",numPublishers=2)
 
         self.mapMsg = MapUtils.getMap()
         self.RRT = RRT(self.mapMsg)
 
-        self.initialState = RobotState(0,0,3.14)
+        self.goalState = RobotState(-1.7,-3.5,0)
         
         self.clickSub = rospy.Subscriber(
                 "/move_base_simple/goal", 
@@ -29,12 +29,14 @@ class Test_RRT(VisualizeLine):
         y = msg.pose.position.y
         theta = MapUtils.quaternionToAngle(msg.pose.orientation)
 
-        finalState = RobotState(x, y, theta)
+        initState = RobotState(x, y, theta)
 
-        tree = self.RRT.computePath(self.initialState, finalState)
+        tree = self.RRT.computePath(initState, self.goalState, backwards=True)
 
         # self.visualize(self.RRT.treeToLineList(tree),(1.,0.,0.),True)
-        self.visualize(self.RRT.getPoints(),(0.,1.,0.))
+        (forwardPoints, backwardsPoints) = self.RRT.getLineLists()
+        self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=0,lineList=False)
+        self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)
 
 if __name__=="__main__":
     rospy.init_node("Test_RRT")

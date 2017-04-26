@@ -10,11 +10,19 @@ CIRCLE_WIDTH_ADJUSTMENT = DIST_FROM_CIRCLE_AXIS- np.cos(ANGLE_SPACING)/DIST_FROM
 class Steer:
     exists = False
     steerable = False
+    backwards = False
 
     def __init__(self, init, goal, rangeMethod):
+        if goal.isBackwards():
+            init, goal=goal, init
+            self.backwards = True
+
         self.rangeMethod = rangeMethod
 
         positionDifference = goal.getPosition() - init.getPosition()
+
+        if np.dot(positionDifference,positionDifference) == 0:
+            return
 
         # Which way do we turn at the start?
         self.initSide = Steer.sign(
@@ -124,7 +132,7 @@ class Steer:
 
     @staticmethod
     def getAngle(vector):
-        return np.arccos(vector[1]) * Steer.sign(vector[0])
+        return np.arccos(np.clip(vector[1],-1,1)) * Steer.sign(vector[0])
 
     @staticmethod
     def getAngleBetweenVectors(init, goal, direction):
@@ -134,8 +142,10 @@ class Steer:
             goalAngle += 2 * np.pi
         return goalAngle - initAngle
 
-    def getPoints(self):
+    def getPoints(self, oriented = False):
         points = []
+
+        # points.append(self.init.getPosition())
 
         # Draw points along init arc
         points += Steer.getPointsOnCircle(
@@ -156,7 +166,14 @@ class Steer:
                 self.goalStartAngle,
                 self.goalAngle,
                 self.goalSide)
-            
+
+        if oriented:
+            for i in xrange(len(points)):
+                points[i] = (points[i],self.backwards)
+        
+        if self.backwards:
+            points.reverse()
+
         return points
 
     @staticmethod
