@@ -1,5 +1,5 @@
 # The velocity of the car
-CAR_VELOCITY = 3. # meters/seconds
+CAR_VELOCITY = 1. # meters/seconds
 
 # measured from the
 # center of the front wheel axle 
@@ -24,4 +24,4 @@ CAR_FORWARD_LENGTH = 0.1
 #CAR_WIDTH = 0.2 # meters
 CAR_WIDTH = 0.45
 
-DISTANCE_FROM_REAR_AXLE_TO_LIDAR = 0.3 # meters
+DISTANCE_FROM_REAR_AXLE_TO_LIDAR = 28./100. # meters
