@@ -7,6 +7,13 @@ from CameraSettings import *
 class CircleThreshold:
     HSV_MIN = np.array([6, 90, 160])
     HSV_MAX = np.array([15, 255, 255])
+
+    HSV_MIN_ORANGE = np.array([2, 182, 133])
+    HSV_MAX_ORANGE = np.array([7, 254, 225])
+
+    HSV_MIN_GREEN = np.array([74, 73, 39])
+    HSV_MAX_GREEN = np.array([109, 185, 75])
+
     RANDOM_SAMPLE_SIZE = 50
 
     def __init__(self, lookAheadDistance):
@@ -18,7 +25,7 @@ class CircleThreshold:
 
     def threshold(self, inputImage):
         hsvImage = cv2.cvtColor(inputImage, cv2.COLOR_BGR2HSV)
-        self.mask = cv2.inRange(hsvImage, self.HSV_MIN, self.HSV_MAX)
+        self.mask = cv2.inRange(hsvImage, self.HSV_MIN_ORANGE, self.HSV_MAX_ORANGE)
         self.mask = cv2.erode(self.mask, None, iterations = 2)
         # Dilate
         self.mask = cv2.dilate(self.mask, None, iterations = 2)
@@ -71,11 +78,38 @@ if __name__ == "__main__":
 
     cv2.circle(img, (int(pixelPoint[0]), int(pixelPoint[1])), 4, (0, 255, 0), -1)
 
-
-    cv2.imshow('dst_rt', img)
+    cv2.imshow("image", img)
     cv2.waitKey(0)
 
-    # transform = c.CoordinateTransformations.transformWorldToPixels((0,0))
-    # print transform
+    # The code below can be used to pick max and min hsv values.
+    # Just uncomment and click points in the area you want to sample.
+
+    # values = []
+    # hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    # def get_hsv(event, x, y, flags, param):
+    #     global values, hsv
+        
+    #     if event == cv2.EVENT_LBUTTONDOWN:
+	   #      values.append(hsv[y, x])
+
+    # cv2.namedWindow("image")
+    # cv2.setMouseCallback("image", get_hsv)
+
+
+    # while True:
+    # # display the image and wait for a keypress
+    #     cv2.imshow("image", img)
+    #     key = cv2.waitKey(1) & 0xFF    
+
+    #     if key == ord("c"):
+    #         break
+
+    # print values
+    # print "min: "
+    # print np.min(values, axis = 0).tolist()
+    # print "max: "
+    # print np.max(values, axis = 0).tolist()
+    # cv2.destroyAllWindows()
 
 
