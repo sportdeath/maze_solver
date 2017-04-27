@@ -11,7 +11,7 @@ class RRTNode:
         self.parent = parent
 
 class RRT:
-    MAX_ITERATIONS = 100
+    MAX_RRT_ITERATIONS = 50
     MAX_OPTIMIZATION_ITERATIONS = 100
 
     def __init__(self, mapMsg):
@@ -21,6 +21,8 @@ class RRT:
         self.unoccupiedPoints = MapUtils.getUnoccupiedPoints(self.mapMsg)
 
     def computePath(self, init, goal, backwards=False):
+        print "Computing new path"
+        RRT_ITERATIONS = 0
         tree = [RRTNode(init, 0, None)]
         newState = True
 
@@ -35,12 +37,24 @@ class RRT:
 
         # Building paths to goal
         newState = True
-        while True:
+        bestCost = np.inf
+        bestGoal = None
+
+        while RRT_ITERATIONS < self.MAX_RRT_ITERATIONS:
             newState = self.updateTree(tree,newState,goalStates,backwards)
-            if newState == "Done":
-                self.path = RRT.treeToPath(tree)
-                self.optimize(backwards)
-                return tree
+            if newState == "Goal":
+                if tree[-1].cost < bestCost:
+                    bestGoal = tree[-1]
+                    bestCost = tree[-1].cost
+                    # print "replaced bestGoal", bestGoal
+            RRT_ITERATIONS += 1
+
+        if bestGoal:
+            self.path = RRT.treeToPath(tree, bestGoal)
+            self.optimize(backwards)
+            return tree
+        print "NO PATH FOUND"
+        return [(init.getPosition(), False)]
 
     def updateTree(self, tree, newState, goalStates, backwards):
         # Check whether last state we added 
@@ -57,7 +71,7 @@ class RRT:
                                 goal, 
                                 tree[-1].cost + steer.getLength(),
                                 tree[-1]))
-                    return "Done"
+                    return "Goal"
             newState = False
 
         randomState = self.getRandomState(backwards)
@@ -96,16 +110,16 @@ class RRT:
         return randomState
 
     @staticmethod
-    def treeToPath(tree):
-        # Goal node is always last node in tree
-        path = [tree[-1]]
+    def treeToPath(tree, bestGoal):
+        if bestGoal:
+            path = [bestGoal]
 
-        while path[-1].parent:
-            path.append(path[-1].parent)
+            while path[-1].parent:
+                path.append(path[-1].parent)
 
-        path.reverse()
+            path.reverse()
 
-        return path
+            return path
 
     def treeToLineList(self, tree):
         lineList = []
