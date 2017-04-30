@@ -4,8 +4,7 @@ class RobotState:
     def __init__(self, x, y, theta):
         self.position = np.array([x, y])
         self.theta = theta
-        # TODO is this vector oriented right???
-        self.orientation = np.array([np.sin(theta), np.cos(theta)])
+        self.orientation = np.array([np.cos(theta), np.sin(theta)])
     
     def getPosition(self):
         return self.position
