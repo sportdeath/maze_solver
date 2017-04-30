@@ -18,7 +18,7 @@ REACTION_TIME = 2.0 # seconds
 
 POSE_PICKER_OUTPUT = "/home/racecar/racecar-ws/src/lab6/src/TrajectoryTracking/PickedPoints.txt"
 PATH_PLANNER_OUTPUT = "/home/racecar/racecar-ws/src/lab6/src/TrajectoryTracking/Path.txt"
-PATH_PLANNER_OUTPUT_FIXED = "/home/katy/racecar-ws/src/final_challenge/paths/Path-Fixed.txt"
+PATH_PLANNER_OUTPUT_FIXED = "/home/katy/racecar-ws/src/final_challenge/TrajectoryTracking/paths/Path-Fixed.txt"
 PATH_PLANNER_STATES = "/home/racecar/racecar-ws/src/lab6/src/TrajectoryTracking/PathStates.txt"
 PATH_PLANNER_INDEX = "/home/racecar/racecar-ws/src/lab6/src/TrajectoryTracking/PathIndex.txt"
 
