@@ -11,6 +11,8 @@ class RRTNode:
         self.parent = parent
 
 class RRT:
+    MAX_ITERATIONS = 10000
+
     def __init__(self, mapMsg):
         self.mapMsg = mapMsg
         self.rangeLib = MapUtils.getRangeLib(self.mapMsg)
@@ -29,6 +31,7 @@ class RRT:
             if newState == "Done":
                 print("Done!")
                 self.path = RRT.treeToPath(tree)
+                self.optimize()
                 return
 
     def updateTree(self, tree, newState, goal):
@@ -79,6 +82,15 @@ class RRT:
         randomState = RobotState(randomPosition[0], randomPosition[1], randomTheta)
         return randomState
 
+    # returns a random RobotState centered about state.position and theta pointed generally in the right direction
+    def getRandomStateCentered(self, state):
+        STANDARD_DEVIATION = 1
+        randomTheta = np.random.uniform(0, np.pi*2)
+        randomXPosition = np.random.normal(state.position[0], STANDARD_DEVIATION)
+        randomYPosition = np.random.normal(state.position[1], STANDARD_DEVIATION)
+
+        return RobotState(randomXPosition, randomYPosition, randomTheta)
+
     @staticmethod
     def treeToPath(tree):
         # Goal node is always last node in tree
@@ -104,3 +116,20 @@ class RRT:
         return points
 
     # TODO spend some time greedily optimizing path
+    def optimize(self):
+        print "Optimizing"
+        for i in xrange(self.MAX_ITERATIONS):
+            randomIndex = np.random.randint(len(self.path))
+            randomState = self.getRandomStateCentered(self.path[randomIndex].state)
+
+            steer1 = Steer(self.path[randomIndex - 1].state, randomState, self.rangeMethod)
+            steer2 = Steer(randomState, self.path[randomIndex + 1].state self.rangeMethod)
+
+            if (steer1.isSteerable() and steer2.isSteerable()):
+                oldCost = (self.path[randomIndex].cost - self.path[randomIndex - 1].cost) + (self.path[randomIndex + 1].cost - self.path[randomIndex].cost)
+                newCost = steer1.getLength() + steer2.getLength()
+                if newCost < oldCost:
+                    self.path[randomIndex] = RRTNode(randomState, self.path[randomIndex - 1].cost + steer1.getLength(), self.path[randomIndex - 1])
+                    print "Rewired a node"
+
+        print "Done Optimizing"
