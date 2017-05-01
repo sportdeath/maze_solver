@@ -32,7 +32,7 @@ class RRT:
                 print("Done!")
                 self.path = RRT.treeToPath(tree)
                 self.optimize()
-                return
+                return tree
 
     def updateTree(self, tree, newState, goal):
         # Check whether last state we added 
@@ -102,6 +102,18 @@ class RRT:
         path.reverse()
 
         return path
+
+    def treeToLineList(self, tree):
+        lineList = []
+        for node in tree:
+            if node.parent != None:
+                steer = Steer(node.parent.state, node.state, self.rangeMethod)
+                points = steer.getPoints()
+                for i in xrange(len(points)):
+                    lineList.append(points[i])
+                    if i != 0 and i != len(points) - 1:
+                        lineList.append(points[i])
+        return lineList
 
     def getPoints(self):
         points = []
