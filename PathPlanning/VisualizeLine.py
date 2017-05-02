@@ -8,7 +8,7 @@ import tf.transformations
 import tf
 
 class VisualizeLine:
-    def __init__(self, topicName, color):
+    def __init__(self, topicName):
         self.publisher = rospy.Publisher(
                 topicName,
                 Marker,
@@ -17,36 +17,32 @@ class VisualizeLine:
         self.transformationFramePublisher =\
                 tf.TransformBroadcaster()
 
-        self.color = color
+        self.publishTransformationFrame()
 
-        # r = rospy.Rate(10)
-
-        # while not rospy.is_shutdown():
-        #     self.visualize(points, color)
-        #     self.publishTransformationFrame()
-        #     r.sleep()
-
-    def visualize(self, points):
+    def visualize(self, points, color = (1.,1.,1.), lineList = False):
         header = Header()
         header.stamp = rospy.Time.now()
         header.frame_id = "/base_link"
 
         lineStrip = Marker()
-        lineStrip.type = Marker.LINE_STRIP
+        if lineList:
+            lineStrip.type = Marker.LINE_LIST
+        else:
+            lineStrip.type = Marker.LINE_STRIP
         lineStrip.action = Marker.ADD
         lineStrip.header = header
         lineStrip.scale.x = 0.1
         lineStrip.pose.orientation.w = 1.
         lineStrip.color.a = 1.
-        lineStrip.color.r = self.color[0]
-        lineStrip.color.g = self.color[1]
-        lineStrip.color.b = self.color[2]
+        lineStrip.color.r = color[0]
+        lineStrip.color.g = color[1]
+        lineStrip.color.b = color[2]
 
         for point in points:
             p = Point()
             p.x = point[0]
             p.y = point[1]
-            p.z = 1
+            p.z = 0.0001
             lineStrip.points.append(p)
 
         self.publisher.publish(lineStrip)

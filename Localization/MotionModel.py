@@ -25,7 +25,7 @@ class MotionModel:
 
         # Randomness model Gaussian parameters
         # In order [x, y, theta]
-        self.stdDevSlope = [np.float32(.4), np.float32(.4), np.float32(.7)]
+        self.stdDevSlope = [np.float32(.5), np.float32(.5), np.float32(.7)] # 0.4, 0.4, 0.7
         self.stdDevOffset = [np.float32(.2), np.float32(.2), np.float32(.3)]
 
     # The callback function called whenever

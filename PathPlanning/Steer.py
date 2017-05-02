@@ -1,15 +1,19 @@
 from CarConstants import *
 import numpy as np
 
-MIN_RADIUS = np.tan(MAX_STEERING_ANGLE)/CAR_LENGTH
-POINT_SPACING = 0.1
+MIN_RADIUS = np.tan(MAX_STEERING_ANGLE)/CAR_AXLE_DISTANCE
+POINT_SPACING = CAR_FORWARD_LENGTH + CAR_REAR_LENGTH
 ANGLE_SPACING = POINT_SPACING/MIN_RADIUS
+DIST_FROM_CIRCLE_AXIS = (MIN_RADIUS - CAR_WIDTH/2.) 
+CIRCLE_WIDTH_ADJUSTMENT = DIST_FROM_CIRCLE_AXIS- np.cos(ANGLE_SPACING)/DIST_FROM_CIRCLE_AXIS
 
 class Steer:
-    steerable = True
+    exists = False
+    steerable = False
 
-    #def __init__(self, init, goal, unoccupiedPoints):
-    def __init__(self, init, goal):
+    def __init__(self, init, goal, rangeMethod):
+        self.rangeMethod = rangeMethod
+
         positionDifference = goal.getPosition() - init.getPosition()
 
         # Which way do we turn at the start?
@@ -20,7 +24,7 @@ class Steer:
 
         # Compute the center of the circle tangent
         # to the init state
-        initCenterNorm = -self.initSide * np.array([-init.getOrientation()[1], init.getOrientation()[0]])
+        initCenterNorm = self.initSide * Steer.getPerpendicular(init.getOrientation())
         self.initCircleCenter = init.getPosition() + (initCenterNorm * MIN_RADIUS)
 
         # Check for steer-ability:
@@ -28,7 +32,6 @@ class Steer:
             # if the goal is within the radius
             # around the start, then we cannot
             # steer to it
-            self.steerable = False
             return
 
         # Which way do we turn at the end?
@@ -39,7 +42,7 @@ class Steer:
 
         # Compute the center of the circle tangent
         # to the goal state
-        goalCenterNorm = -self.goalSide * np.array([-goal.getOrientation()[1], goal.getOrientation()[0]])
+        goalCenterNorm = self.goalSide * Steer.getPerpendicular(goal.getOrientation())
         self.goalCircleCenter = goal.getPosition() + (goalCenterNorm * MIN_RADIUS)
 
         # Compute the norm that  points from the
@@ -55,12 +58,11 @@ class Steer:
 
             # A line connecting the tangent points
             # on both circles is perpendicular to the circle norm
-            initTangentNorm = self.initSide * np.array([-circleNorm[1], circleNorm[0]])
+            initTangentNorm = -self.initSide * Steer.getPerpendicular(circleNorm)
             goalTangentNorm = initTangentNorm
         else:
             # If not, we are doing an S-Turn
             if circleDistance < 2 * MIN_RADIUS:
-                self.steerable = False
                 return
 
             # This is the angle relative to the circle norm
@@ -100,7 +102,12 @@ class Steer:
         self.goalStartAngle = self.getAngle(goalTangentNorm)
 
         # Use ray marching with robot model to check for collisions
-        # self.steerable = self.isCollisionFree()
+        self.exists = True
+        self.steerable = self.isCollisionFree()
+
+    @staticmethod
+    def getPerpendicular(norm):
+        return np.array([norm[1], -norm[0]])
 
     @staticmethod
     def rotateVector(vector, angle):
@@ -159,11 +166,24 @@ class Steer:
         angleOffset = 0.
         while angleOffset < totalAngle:
             angle = (direction * angleOffset) + startAngle
-            norm = MIN_RADIUS * np.array([np.sin(angle), np.cos(angle)])
-            points.append(norm + center)
+            axle = MIN_RADIUS * np.array([np.sin(angle), np.cos(angle)])
+            points.append(axle + center)
             angleOffset += ANGLE_SPACING
 
         return points
+
+    @staticmethod
+    def getPointsAndNormsOnCircle(center, startAngle, totalAngle, direction):
+        pointsAndNorms = []
+
+        angleOffset = 0.
+        while angleOffset < totalAngle:
+            angle = (direction * angleOffset) + startAngle
+            axle = np.array([np.sin(angle), np.cos(angle)])
+            pointsAndNorms.append((MIN_RADIUS * axle + center, Steer.getPerpendicular(axle)))
+            angleOffset += ANGLE_SPACING
+
+        return pointsAndNorms
 
     @staticmethod
     def getPointsOnLine(start, norm, totalLength):
@@ -182,36 +202,57 @@ class Steer:
         # or if there are collisions
         return self.steerable
 
-    def length(self):
+    def getLength(self):
         length = 0
         length += MIN_RADIUS * self.initAngle
         length += self.lineLength
         length += MIN_RADIUS * self.goalAngle
         return length
 
-    def isCollisionFree(self):
-        # TODO
-        # This right now makes the assumption
-        # that the car is a point.
-        # It is also slow because it must generate
-        # points and iterate over them.
-        # This should instead use range_libc
-        # 2 calls to range lib c can tell us if the entire
-        # line contains intersections
-        # several additional calls will give us turning info
-        points = self.getPoints()
-        for point in points:
-            if point not in self.unoccupiedPoints:
+    def testCollisions(self, center, width, length, norm):
+        verticalOffset = -norm * CAR_REAR_LENGTH
+
+        horizontalOffset = Steer.getPerpendicular(norm) * width/2.
+        angle = Steer.getAngle(norm)
+
+        minLength = CAR_REAR_LENGTH + length + CAR_FORWARD_LENGTH
+
+        for side in [-1., 1.]:
+            backWheel = (side * horizontalOffset) + verticalOffset + center
+        
+            distanceToObstacle = self.rangeMethod(backWheel, angle)
+            if distanceToObstacle < minLength:
                 return False
+
         return True
 
+    def isCollisionFree(self):
+        initPointsAndNorms = Steer.getPointsAndNormsOnCircle(
+                self.initCircleCenter,
+                self.initStartAngle,
+                self.initAngle,
+                self.initSide)
 
-# using range libc?
+        goalPointsAndNorms = Steer.getPointsAndNormsOnCircle(
+                self.goalCircleCenter,
+                self.goalStartAngle,
+                self.goalAngle,
+                self.goalSide)
 
-# send rays from the very back wheels of the car for straight line segment
-# if distance is less than length, from there, to point with car wheels at front
-# than there is intersection
+        for (point,norm) in (goalPointsAndNorms + initPointsAndNorms):
+            isFree = self.testCollisions(
+                    point,
+                    CAR_WIDTH + CIRCLE_WIDTH_ADJUSTMENT,
+                    0.,
+                    norm)
+            if not isFree:
+                return False
 
-# if its turning than draw parallelogram
-
-# assume no obstacles are less wide than the car
+        # To check intersections along the line
+        # Have points at the car's left and right
+        # back wheel and propagate them forward
+        return self.testCollisions(
+                self.initTangentPoint,
+                CAR_WIDTH,
+                self.lineLength,
+                self.lineNorm)
