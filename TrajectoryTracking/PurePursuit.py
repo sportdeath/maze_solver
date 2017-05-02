@@ -26,7 +26,9 @@ class PurePursuit:
                 queue_size = 1)
         self.pathPub = rospy.Publisher("/pp/map_points", PoseArray, queue_size = 1)
         self.nextGoalPub = rospy.Publisher("/pp/next_goal_point", PoseStamped, queue_size = 1)
+        
         self.transformationFramePublisher = tf.TransformBroadcaster()
+        self.listener = tf.TransformListener()
 
         self.carLength = CAR_LENGTH
 
@@ -58,7 +60,16 @@ class PurePursuit:
             goalPointWorld = self.trajectoryTracker.getGoalPointGlobal(carPosition)
             self.publish_point(goalPointWorld)
 
-            relativeGoalPosition = goalPointWorld - carPosition
+            try:
+                (trans,rot) = listener.lookupTransform('/turtle2', '/turtle1', rospy.Time(0))
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                print "COULD NOT GET TRANSFORM"
+                return 0
+
+            transform = np.dot(trans, rot)
+            goalPointRobot = np.dot(transform, goalPointWorld)
+
+            relativeGoalPosition = goalPointRobot - carPosition
 
             goalDistance = np.linalg.norm(relativeGoalPosition)
 
@@ -76,6 +87,7 @@ class PurePursuit:
             goalPointLocal = np.dot(Utils.rotation_matrix(goalAlpha), relativeGoalPosition)
             sinAlpha = goalPointLocal.item(1)/goalDistance
             curvature = 2*sinAlpha/goalDistance
+
             return -np.arctan(curvature * self.carLength)
 
     def poseCB(self, msg):
