@@ -11,6 +11,8 @@ from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 from nav_msgs.msg import Odometry
 
 from LineTrajectory import LineTrajectory
+from Timer import Timer
+from AckermannModel import AckermannModel
 from utils import Utils
 
 class PurePursuit(object):
@@ -32,9 +34,9 @@ class PurePursuit(object):
 		self.drive_topic      = rospy.get_param("~drive_topic")
 
 		self.trajectory  = LineTrajectory("/followed_trajectory")
-		self.model       = utils.AckermannModel(wheelbase_length)
+		self.model       = AckermannModel(wheelbase_length)
 		self.do_viz      = True
-		self.odom_timer  = utils.Timer(10)
+		self.odom_timer  = Timer(10)
 		self.iters       = 0
 		
 		self.nearest_point   = None
@@ -50,6 +52,7 @@ class PurePursuit(object):
 
 		# topic to listen for trajectories
 		self.traj_sub = rospy.Subscriber(self.trajectory_topic, PolygonStamped, self.trajectory_callback, queue_size=1)
+		self.alternate_traj_sub = rospy.Subscriber(self.alternate_trajectory_topic, PolygonStamped, self.alternate_trajectory_callback, queue_size=1)
 		
 		# topic to listen for odometry messages, either from particle filter or the simulator
 		# self.odom_sub = rospy.Subscriber(self.odom_topic,  Odometry, self.odom_callback, queue_size=1)
