@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import numpy as np
+
 import rospy
 from geometry_msgs.msg import PoseStamped
 
@@ -16,13 +18,27 @@ class Test_Steer(VisualizeLine):
         self.rangeLib = MapUtils.getRangeLib(self.mapMsg)
         self.rangeMethod = MapUtils.getRangeMethod(self.rangeLib, self.mapMsg)
 
-        self.initialState = RobotState (0,0,0)
+        self.initialState = RobotState (-1.7,-3.5,0)
         
         self.clickSub = rospy.Subscriber(
                 "/move_base_simple/goal", 
                 PoseStamped, 
                 self.clickedPose, 
                 queue_size=1)
+
+        SIZE = 1000
+        origin = np.array([0.,0.])
+        points = []
+        for i in xrange(SIZE):
+            angle = i * 2. * np.pi/float(SIZE)
+            norm = np.array([np.sin(angle), np.cos(angle)])
+            dist = self.rangeMethod(origin, angle)
+            point = origin + norm * dist
+            points.append(point)
+
+        for i in xrange(10):
+            self.visualize(points,(1.,0.,0.))
+            rospy.sleep(0.1)
 
     def clickedPose(self, msg):
         # The received pose

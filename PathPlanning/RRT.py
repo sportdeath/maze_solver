@@ -11,7 +11,8 @@ class RRTNode:
         self.parent = parent
 
 class RRT:
-    MAX_ITERATIONS = 10000
+    MAX_ITERATIONS = 100
+    MAX_OPTIMIZATION_ITERATIONS = 100
 
     def __init__(self, mapMsg):
         self.mapMsg = mapMsg
@@ -19,39 +20,47 @@ class RRT:
         self.rangeMethod = MapUtils.getRangeMethod(self.rangeLib, self.mapMsg)
         self.unoccupiedPoints = MapUtils.getUnoccupiedPoints(self.mapMsg)
 
-    def computePath(self, init, goal):
+    def computePath(self, init, goal, backwards=False):
         tree = [RRTNode(init, 0, None)]
         newState = True
+
+        goalStates = [goal]
+        if backwards:
+            backwardsGoal = RobotState(
+                    goal.getX(),
+                    goal.getY(),
+                    goal.getTheta(),
+                    not goal.isBackwards())
+            goalStates.append(backwardsGoal)
 
         # Building paths to goal
         newState = True
         while True:
-            print(len(tree))
-            newState = self.updateTree(tree,newState,goal)
+            newState = self.updateTree(tree,newState,goalStates,backwards)
             if newState == "Done":
-                print("Done!")
                 self.path = RRT.treeToPath(tree)
-                self.optimize()
+                self.optimize(backwards)
                 return tree
 
-    def updateTree(self, tree, newState, goal):
+    def updateTree(self, tree, newState, goalStates, backwards):
         # Check whether last state we added 
         # has steerable path to goal
         if newState:
-            steer = Steer(tree[-1].state, goal, self.rangeMethod)
+            for goal in goalStates:
+                steer = Steer(tree[-1].state, goal, self.rangeMethod)
 
-            if steer.isSteerable():
-                # If is is add the goal state to
-                # the tree and return
-                tree.append(
-                        RRTNode(
-                            goal, 
-                            tree[-1].cost + steer.getLength(),
-                            tree[-1]))
-                return "Done"
+                if steer.isSteerable():
+                    # If is is add the goal state to
+                    # the tree and return
+                    tree.append(
+                            RRTNode(
+                                goal, 
+                                tree[-1].cost + steer.getLength(),
+                                tree[-1]))
+                    return "Done"
             newState = False
 
-        randomState = self.getRandomState()
+        randomState = self.getRandomState(backwards)
 
         minNode = None
         minCost = np.inf
@@ -72,24 +81,19 @@ class RRT:
 
         return newState
 
-    def getRandomState(self):
+    def getRandomState(self, backwards):
         # TODO
         # Right now this is uniform
         # How can we change how we sample?
         randomIndex = np.random.randint(len(self.unoccupiedPoints))
         randomPosition = self.unoccupiedPoints[randomIndex]
         randomTheta = np.random.uniform(0, 2*np.pi)
-        randomState = RobotState(randomPosition[0], randomPosition[1], randomTheta)
+        if backwards:
+            backwards = bool(np.random.randint(2))
+        else:
+            backwards = False
+        randomState = RobotState(randomPosition[0], randomPosition[1], randomTheta, backwards)
         return randomState
-
-    # returns a random RobotState centered about state.position and theta pointed generally in the right direction
-    def getRandomStateCentered(self, state):
-        STANDARD_DEVIATION = 1
-        randomTheta = np.random.uniform(0, np.pi*2)
-        randomXPosition = np.random.normal(state.position[0], STANDARD_DEVIATION)
-        randomYPosition = np.random.normal(state.position[1], STANDARD_DEVIATION)
-
-        return RobotState(randomXPosition, randomYPosition, randomTheta)
 
     @staticmethod
     def treeToPath(tree):
@@ -115,33 +119,58 @@ class RRT:
                         lineList.append(points[i])
         return lineList
 
-    def getPoints(self):
+    def getLineLists(self):
+        forwardList = []
+        backwardList = []
+
+        points = self.getPoints(True)
+
+        for i in xrange(len(points)):
+            point = points[i]
+            if point[1]:
+                l = backwardList
+            else:
+                l = forwardList
+            l.append(point[0])
+            if i > 0 and i < len(points) - 1:
+                if points[i-1][1] == point[1] == points[i+1][1]:
+                    l.append(point[0])
+
+        return (forwardList, backwardList)
+
+    def getPoints(self, oriented=False):
         points = []
         previousNode = self.path[0]
 
         for i in xrange(1,len(self.path)):
             node = self.path[i]
             steer = Steer(previousNode.state, node.state, self.rangeMethod)
-            points += steer.getPoints()
+            points += steer.getPoints(oriented)
             previousNode = node
 
         return points
 
-    # TODO spend some time greedily optimizing path
-    def optimize(self):
-        print "Optimizing"
-        for i in xrange(self.MAX_ITERATIONS):
-            randomIndex = np.random.randint(len(self.path))
-            randomState = self.getRandomStateCentered(self.path[randomIndex].state)
+    def optimize(self, backwards):
+        if len(self.path) < 3:
+            return
 
-            steer1 = Steer(self.path[randomIndex - 1].state, randomState, self.rangeMethod)
-            steer2 = Steer(randomState, self.path[randomIndex + 1].state self.rangeMethod)
+        for i in xrange(self.MAX_OPTIMIZATION_ITERATIONS):
+            # Ignore the end points
+            randomState = self.getRandomState(backwards)
 
-            if (steer1.isSteerable() and steer2.isSteerable()):
-                oldCost = (self.path[randomIndex].cost - self.path[randomIndex - 1].cost) + (self.path[randomIndex + 1].cost - self.path[randomIndex].cost)
-                newCost = steer1.getLength() + steer2.getLength()
-                if newCost < oldCost:
-                    self.path[randomIndex] = RRTNode(randomState, self.path[randomIndex - 1].cost + steer1.getLength(), self.path[randomIndex - 1])
-                    print "Rewired a node"
+            for index in xrange(1,len(self.path)-1):
+                # Steer to that path
+                steer1 = Steer(self.path[index - 1].state, randomState, self.rangeMethod)
+                steer2 = Steer(randomState, self.path[index + 1].state, self.rangeMethod)
 
-        print "Done Optimizing"
+                if steer1.isSteerable() and steer2.isSteerable():
+                    oldCost = (self.path[index].cost - self.path[index - 1].cost) \
+                            + (self.path[index + 1].cost - self.path[index].cost)
+                    newCost = steer1.getLength() + steer2.getLength()
+                    if newCost < oldCost:
+                        self.path[index] = RRTNode(
+                                randomState, 
+                                self.path[index - 1].cost + steer1.getLength(),
+                                self.path[index - 1])
+
+

@@ -10,25 +10,26 @@ class CoordinateTransformations:
         self.distanceToBackWheel = distanceToBackWheel
         self.distanceToCenter = distanceToCenter
 
-    # (0,0) is the back wheel
+    # (0,0) is the center of the back wheel axle
     # measurement is in CM
     def transformPixelsToWorld(self, pixelCoordinates):
-        affinePixelCoordinates = [pixelCoordinates[0], pixelCoordinates[1], 1]
+        affinePixelCoordinates = (pixelCoordinates[0], pixelCoordinates[1], 1)
         affineWorldCoordinates = np.matmul(self.transformationMatrix, affinePixelCoordinates)
 
-        worldCoordinates = [affineWorldCoordinates[0]/affineWorldCoordinates[2], affineWorldCoordinates[1]/affineWorldCoordinates[2]]
-        worldCoordinates[0] = worldCoordinates[0] + self.distanceToCenter
-        worldCoordinates[1] = -worldCoordinates[1] + self.distanceToBackWheel
+        worldCoordinates = (
+                affineWorldCoordinates[0]/affineWorldCoordinates[2] + self.distanceToCenter, 
+                -affineWorldCoordinates[1]/affineWorldCoordinates[2] + self.distanceToBackWheel
+                )
 
         # returns measurement in cm
         return worldCoordinates
 
     def transformWorldToPixels(self, worldCoordinates):
-        affineWorldCoordinates = [worldCoordinates[0] - self.distanceToCenter, -(worldCoordinates[1] - self.distanceToBackWheel), 1]
+        affineWorldCoordinates = (worldCoordinates[0] - self.distanceToCenter, -(worldCoordinates[1] - self.distanceToBackWheel), 1)
 
         affinePixelCoordinates = np.matmul(self.inverseTransformationMatrix, affineWorldCoordinates)
 
-        pixelCoordinates = [int(affinePixelCoordinates[0]/affinePixelCoordinates[2]), int(affinePixelCoordinates[1]/affinePixelCoordinates[2])]
+        pixelCoordinates = (int(affinePixelCoordinates[0]/affinePixelCoordinates[2]), int(affinePixelCoordinates[1]/affinePixelCoordinates[2]))
 
         # returns measurement in pixels
         return pixelCoordinates
@@ -48,6 +49,6 @@ class CoordinateTransformations:
         # convert to worldCoordinates
         for point in grid:
             pixelPoint = self.transformWorldToPixels(point)
-            cv2.circle(outputImage,pixelPoint,1,[0,0,255],thickness=1)
+            cv2.circle(outputImage,pixelPoint,1,(0,0,255),thickness=1)
 
         return outputImage
