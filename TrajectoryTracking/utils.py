@@ -10,6 +10,7 @@ import rospy
 import numpy as np
 
 from std_msgs.msg import Header
+from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Pose, Quaternion, Point32
 from nav_msgs.msg import Odometry
 from nav_msgs.srv import GetMap
@@ -89,6 +90,34 @@ class Utils(object):
     def points(arr):
         return map(Utils.point, arr)
 
+    @staticmethod
+    def make_circle_marker(point, scale, color, frame_id, namespace, sid, duration=0):
+        marker = Marker()
+        marker.header = Utils.make_header(frame_id)
+        marker.ns = namespace
+        marker.id = sid
+        marker.type = 2 # sphere
+        marker.lifetime = rospy.Duration.from_sec(duration)
+        marker.action = 0
+        marker.pose.position.x = point[0]
+        marker.pose.position.y = point[1]
+        marker.pose.orientation.w = 1.0
+        marker.scale.x = scale
+        marker.scale.y = scale
+        marker.scale.z = scale
+        marker.color.r = float(color[0])
+        marker.color.g = float(color[1])
+        marker.color.b = float(color[2])
+        marker.color.a = 1.0
+        return marker
+
+    @staticmethod
+    def marker_clear_all(frame_id):
+        # Create a marker which clears all.
+        marker = Marker()
+        marker.header.frame_id = frame_id;
+        marker.action = 3 # DELETEALL action.
+        return marker
 
     # the following functions are for converting to/from map and world coordinates
     # useful for converting from world poses to array indices in the "self.permissible" array

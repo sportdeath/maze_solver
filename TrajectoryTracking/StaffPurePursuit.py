@@ -5,13 +5,13 @@ import rospy
 import numpy as np
 import time
 
-from geometry_msgs.msg import PolygonStamped
+from geometry_msgs.msg import PolygonStamped, PoseStamped
 from visualization_msgs.msg import Marker
 from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 from nav_msgs.msg import Odometry
 
 from LineTrajectory import LineTrajectory
-from Timer import Timer
+# from Timer import Timer
 from AckermannModel import AckermannModel
 from utils import Utils
 
@@ -36,7 +36,7 @@ class PurePursuit(object):
 		self.trajectory  = LineTrajectory("/followed_trajectory")
 		self.model       = AckermannModel(wheelbase_length)
 		self.do_viz      = True
-		self.odom_timer  = Timer(10)
+		# self.odom_timer  = Timer(10)
 		self.iters       = 0
 		
 		self.nearest_point   = None
@@ -69,11 +69,11 @@ class PurePursuit(object):
 			return
 		# visualize: pure pursuit circle, lookahead intersection, lookahead radius line, nearest point
 		if self.nearest_point_pub.get_num_connections() > 0 and isinstance(self.nearest_point, np.ndarray):
-			self.nearest_point_pub.publish(utils.make_circle_marker(
+			self.nearest_point_pub.publish(Utils.make_circle_marker(
 				self.nearest_point, 0.5, [0.0,0.0,1.0], "/map", self.viz_namespace, 0, 3))
 
 		if self.lookahead_point_pub.get_num_connections() > 0 and isinstance(self.lookahead_point, np.ndarray):
-			self.lookahead_point_pub.publish(utils.make_circle_marker(
+			self.lookahead_point_pub.publish(Utils.make_circle_marker(
 				self.lookahead_point, 0.5, [1.0,1.0,1.0], "/map", self.viz_namespace, 1, 3))
 
 	def trajectory_callback(self, msg):
@@ -84,20 +84,23 @@ class PurePursuit(object):
 		self.trajectory.fromPolygon(msg.polygon)
 		self.trajectory.publish_viz(duration=0.0)
 
+	def alternate_trajectory_callback(self, msg):
+		pass
+
 	def pose_callback(self, msg):
-		pose = np.array([msg.pose.position.x, msg.pose.position.y, Utils.quaternion_to_angle(msg.pose.pose.orientation)])
+		pose = np.array([msg.pose.position.x, msg.pose.position.y, Utils.quaternion_to_angle(msg.pose.orientation)])
 		self.pure_pursuit(pose)
 
-		# this is for timing info
-		self.odom_timer.tick()
-		self.iters += 1
-		if self.iters % 20 == 0:
-			print "Control fps:", self.odom_timer.fps()
+		# # this is for timing info
+		# self.odom_timer.tick()
+		# self.iters += 1
+		# if self.iters % 20 == 0:
+		# 	print "Control fps:", self.odom_timer.fps()
 
 	def odom_callback(self, msg):
 		''' Extracts robot state information from the message, and executes pure pursuit control.
 		'''
-		pose = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, utils.quaternion_to_angle(msg.pose.pose.orientation)])
+		pose = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, Utils.quaternion_to_angle(msg.pose.pose.orientation)])
 		self.pure_pursuit(pose)
 		
 		# this is for timing info
@@ -129,13 +132,13 @@ class PurePursuit(object):
 			self.trajectory.make_np_array()
 
 		# step 1
-		nearest_point, nearest_dist, t, i = utils.nearest_point_on_trajectory(pose[:2], self.trajectory.np_points)
+		nearest_point, nearest_dist, t, i = LineTrajectory.nearest_point_on_trajectory(pose[:2], self.trajectory.np_points)
 		self.nearest_point = nearest_point
 
 		if nearest_dist < self.lookahead:
 			# step 2
 			lookahead_point, i2, t2 = \
-				utils.first_point_on_trajectory_intersecting_circle(pose[:2], self.lookahead, self.trajectory.np_points, i+t, wrap=self.wrap)
+				LineTrajectory.first_point_on_trajectory_intersecting_circle(pose[:2], self.lookahead, self.trajectory.np_points, i+t, wrap=self.wrap)
 			if i2 == None:
 				if self.iters % 5 == 0:
 					print "Could not find intersection, end of path?"
@@ -166,7 +169,7 @@ class PurePursuit(object):
 		    necessary to navigate to that lookahead point. Uses Ackermann steering geometry.
 		'''
 		# get the lookahead point in the coordinate frame of the car
-		rot = utils.rotation_matrix(-pose[2])
+		rot = Utils.rotation_matrix(-pose[2])
 		delta = np.array([lookahead_point - pose[0:2]]).transpose()
 		local_delta = (rot*delta).transpose()
 		local_delta = np.array([local_delta[0,0], local_delta[0,1]])

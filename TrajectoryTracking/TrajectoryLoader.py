@@ -3,7 +3,7 @@
 import rospy
 from geometry_msgs.msg import PolygonStamped
 import time, os
-from utils import LineTrajectory
+from LineTrajectory import LineTrajectory
 
 class LoadTrajectory(object):
 	""" Loads a trajectory from the file system and publishes it to a ROS topic.
@@ -14,7 +14,7 @@ class LoadTrajectory(object):
 
 		# initialize and load the trajectory
 		self.trajectory = LineTrajectory("/loaded_trajectory")
-		self.trajectory.load(path_to_file)
+		self.trajectory.load(self.path)
 
 		self.traj_pub = rospy.Publisher(self.pub_topic, PolygonStamped, queue_size=1)
 

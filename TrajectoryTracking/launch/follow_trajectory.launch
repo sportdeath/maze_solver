@@ -1,6 +1,6 @@
 <launch>
 
-	<arg name="trajectory" default="/home/racecar/racecar-ws/src/final_challenge/TrajectoryTracking/paths/Path-Fixed.txt"/>
+	<arg name="trajectory" default="/home/katy/racecar-ws/src/final_challenge/TrajectoryTracking/paths/Path-Fixed.txt"/>
 
 	<node pkg="final_challenge" type="TrajectoryLoader.py" name="Trajectory_loader">
 		<param name="trajectory" value="$(arg trajectory)"/>

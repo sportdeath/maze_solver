@@ -10,6 +10,8 @@ import json
 import tf.transformations
 import tf
 
+from utils import Utils
+
 EPSILON = 0.00000000001
 
 class LineTrajectory(object):
@@ -99,10 +101,11 @@ class LineTrajectory(object):
 
 	def load(self, path):
 		print "Loading trajectory:", path
-		with open(path) as json_file:
-			json_data = json.load(json_file)
-			for p in json_data["points"]:
-				self.points.append((p["x"], p["y"]))
+		self.points = np.loadtxt(path)
+		# with open(path) as json_file:
+		# 	json_data = json.load(json_file)
+		# 	for p in json_data["points"]:
+		# 		self.points.append((p["x"], p["y"]))
 		self.update_distances()
 		print "Loaded:", len(self.points), "points"
 		self.mark_dirty()
@@ -125,7 +128,7 @@ class LineTrajectory(object):
 
 	def toPolygon(self):
 		poly = PolygonStamped()
-		poly.header = make_header("/map")
+		poly.header = Utils.make_header("/map")
 		use_speed_profile = len(self.speed_profile) == len(self.points)
 		for i in xrange(len(self.points)):
 			p = self.points[i]
@@ -144,7 +147,7 @@ class LineTrajectory(object):
 		if self.visualize and self.speed_pub.get_num_connections() > 0:
 			print "Publishing speed profile"
 			marker = Marker()
-			marker.header = make_header("/map")
+			marker.header = Utils.make_header("/map")
 			marker.ns = self.viz_namespace + "/trajectory"
 			marker.id = 0
 			marker.type = 2 # sphere
@@ -174,7 +177,7 @@ class LineTrajectory(object):
 		if self.visualize and self.end_pub.get_num_connections() > 0:
 			print "Publishing end point"
 			marker = Marker()
-			marker.header = make_header("/map")
+			marker.header = Utils.make_header("/map")
 			marker.ns = self.viz_namespace + "/trajectory"
 			marker.id = 1
 			marker.type = 2 # sphere
@@ -204,7 +207,7 @@ class LineTrajectory(object):
 		if self.visualize and self.traj_pub.get_num_connections() > 0:
 			print "Publishing trajectory"
 			marker = Marker()
-			marker.header = make_header("/map")
+			marker.header = Utils.make_header("/map")
 			marker.ns = self.viz_namespace + "/trajectory"
 			marker.id = 2
 			marker.type = 4 # line strip
@@ -233,10 +236,10 @@ class LineTrajectory(object):
 
 	def publish_speeds(self, duration=0.0, scale=0.7):
 		should_publish = len(self.speed_profile) > 1
-		if self.visualize and self.speed_pub.get_num_connections() > 0:
+		if should_publish and self.visualize and self.speed_pub.get_num_connections() > 0:
 			if self.dirty():
 				self.make_np_array()
-			markers = [marker_clear_all("/map")]
+			markers = [Utils.marker_clear_all("/map")]
 			normed_speeds = np.array(self.speed_profile) / np.max(self.speed_profile)
 			last_speed = 0.0
 			for i, speed in enumerate(normed_speeds):
@@ -268,3 +271,106 @@ class LineTrajectory(object):
 		self.publish_trajectory(duration=duration)
 		self.publish_end_point(duration=duration)
 		self.publish_speeds(duration=duration)
+
+	@staticmethod
+	def nearest_point_on_trajectory(point, trajectory):
+		'''
+		Return the nearest point along the given piecewise linear trajectory.
+		Same as nearest_point_on_line_segment, but vectorized. This method is quite fast, time constraints should
+		not be an issue so long as trajectories are not insanely long. 
+			Order of magnitude: trajectory length: 1000 --> 0.0002 second computation (5000fps)
+		point: size 2 numpy array
+		trajectory: Nx2 matrix of (x,y) trajectory waypoints
+			- these must be unique. If they are not unique, a divide by 0 error will destroy the world
+		'''
+		diffs = trajectory[1:,:] - trajectory[:-1,:]
+		l2s   = diffs[:,0]**2 + diffs[:,1]**2
+		# this is equivalent to the elementwise dot product
+		dots = np.sum((point - trajectory[:-1,:]) * diffs[:,:], axis=1)
+		t = np.clip(dots / l2s, 0.0, 1.0)
+		projections = trajectory[:-1,:] + (t*diffs.T).T
+		dists = np.linalg.norm(point - projections,axis=1)
+		min_dist_segment = np.argmin(dists)
+		return projections[min_dist_segment], dists[min_dist_segment], t[min_dist_segment], min_dist_segment
+
+	@staticmethod
+	def first_point_on_trajectory_intersecting_circle(point, radius, trajectory, t=0.0, wrap=False):
+		''' starts at beginning of trajectory, and find the first point one radius away from the given point along the trajectory.
+		Assumes that the first segment passes within a single radius of the point
+		http://codereview.stackexchange.com/questions/86421/line-segment-to-circle-collision-algorithm
+		'''
+		start_i = int(t)
+		start_t = t % 1.0
+		first_t = None
+		first_i = None
+		first_p = None
+		for i in xrange(start_i, trajectory.shape[0]-1):
+			start = trajectory[i,:]
+			end = trajectory[i+1,:]
+			V = end - start
+			
+			a = np.dot(V,V)
+			b = 2.0*np.dot(V, start - point)
+			c = np.dot(start, start) + np.dot(point,point) - 2.0*np.dot(start, point) - radius*radius
+			discriminant = b*b-4*a*c
+
+			if discriminant < 0:
+				continue
+			# 	print "NO INTERSECTION"
+			# else:
+			# if discriminant >= 0.0:
+			discriminant = np.sqrt(discriminant)
+			t1 = (-b - discriminant) / (2.0*a)
+			t2 = (-b + discriminant) / (2.0*a)
+			if i == start_i:
+				if t1 >= 0.0 and t1 <= 1.0 and t1 >= start_t:
+					first_t = t1
+					first_i = i
+					first_p = start + t1 * V
+					break
+				if t2 >= 0.0 and t2 <= 1.0 and t2 >= start_t:
+					first_t = t2
+					first_i = i
+					first_p = start + t2 * V
+					break
+			elif t1 >= 0.0 and t1 <= 1.0:
+				first_t = t1
+				first_i = i
+				first_p = start + t1 * V
+				break
+			elif t2 >= 0.0 and t2 <= 1.0:
+				first_t = t2
+				first_i = i
+				first_p = start + t2 * V
+				break
+		# wrap around to the beginning of the trajectory if no intersection is found1
+		if wrap and first_p == None:
+			for i in xrange(start_i):
+				start = trajectory[i,:]
+				end = trajectory[i+1,:]
+				V = end - start
+				
+				a = np.dot(V,V)
+				b = 2.0*np.dot(V, start - point)
+				c = np.dot(start, start) + np.dot(point,point) - 2.0*np.dot(start, point) - radius*radius
+				discriminant = b*b-4*a*c
+
+				if discriminant < 0:
+					continue
+				discriminant = np.sqrt(discriminant)
+				t1 = (-b - discriminant) / (2.0*a)
+				t2 = (-b + discriminant) / (2.0*a)
+				if t1 >= 0.0 and t1 <= 1.0:
+					first_t = t1
+					first_i = i
+					first_p = start + t1 * V
+					break
+				elif t2 >= 0.0 and t2 <= 1.0:
+					first_t = t2
+					first_i = i
+					first_p = start + t2 * V
+					break
+
+		return first_p, first_i, first_t
+
+		# print min_dist_segment, dists[min_dist_segment], projections[min_dist_segment]
