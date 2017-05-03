@@ -1,19 +1,19 @@
 <launch>
 
 	<node pkg="final_challenge" type="Safety.py" name="Safety" output="screen">
-		<param name="max_distance" value="0.1"/>
+		<param name="max_distance" value="0.3"/>
 	</node>
 
-	<arg name="trajectory" default="/home/katy/racecar-ws/src/final_challenge/TrajectoryTracking/paths/Path-Fixed.txt"/>
+	<arg name="trajectory" default="/home/racecar/racecar-ws/src/final_challenge/TrajectoryTracking/paths/Path-Fixed.txt"/>
 
 	<node pkg="final_challenge" type="TrajectoryLoader.py" name="Trajectory_loader" output="screen">
 		<param name="trajectory" value="$(arg trajectory)"/>
 		<param name="trajectory_topic" value="/trajectory/current"/>
 	</node>
 
-	<arg name="lookahead" default="1.5"/>
+	<arg name="lookahead" default="2.5"/>
 	<arg name="max_reacquire" default="3.0"/>
-	<arg name="speed" default="1.5"/>
+	<arg name="speed" default="2.5"/>
 	
 	<node pkg="final_challenge" type="StaffPurePursuit.py" name="Trajectory_follower" output="screen">
 		<param name="trajectory_topic" value="/trajectory/current"/>

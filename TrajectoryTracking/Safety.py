@@ -80,6 +80,8 @@ class Safety():
 		# If the autonomous stack is trying to run us into a wall, then stop.
 		if ( something_in_front_of_robot ):
 			stop_msg = AckermannDriveStamped()
+            # stop_msg.speed = 0
+            # stop_msg.steering_angle = 0
 			rospy.loginfo('stopped for obstacle')
 			self.pub.publish(stop_msg)
 			

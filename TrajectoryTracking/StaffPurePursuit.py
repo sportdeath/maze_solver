@@ -190,7 +190,7 @@ class PurePursuit(object):
 		self.control_pub.publish(drive_msg_stamped)
 
 	def stop(self):
-		print "Stopping"
+		# print "Stopping"
 		drive_msg_stamped = AckermannDriveStamped()
 		drive_msg = AckermannDrive()
 		drive_msg.speed = 0
