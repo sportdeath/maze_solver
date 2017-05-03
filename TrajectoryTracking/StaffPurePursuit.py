@@ -1,9 +1,9 @@
 #!/usr/bin/env python
+from Config import *
 
 import rospy
 import numpy as np
 import time
-import utils
 
 from geometry_msgs.msg import PolygonStamped
 from visualization_msgs.msg import Marker
@@ -11,6 +11,7 @@ from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 from nav_msgs.msg import Odometry
 
 from LineTrajectory import LineTrajectory
+from utils import Utils
 
 class PurePursuit(object):
 	""" Implements Pure Pursuit trajectory tracking with a fixed lookahead and speed.
@@ -50,8 +51,9 @@ class PurePursuit(object):
 		self.traj_sub = rospy.Subscriber(self.trajectory_topic, PolygonStamped, self.trajectory_callback, queue_size=1)
 		
 		# topic to listen for odometry messages, either from particle filter or the simulator
-		self.odom_sub = rospy.Subscriber(self.odom_topic,  Odometry, self.odom_callback, queue_size=1)
-		self.poseSub = rospy.Subscriber("/pf/viz/inferred_pose", PoseStamped, self.poseCB, queue_size = 1)
+		# self.odom_sub = rospy.Subscriber(self.odom_topic,  Odometry, self.odom_callback, queue_size=1)
+		self.pose_sub = rospy.Subscriber("/pf/viz/inferred_pose", PoseStamped, self.pose_callback, queue_size = 1)
+		
 		print "Initialized. Waiting on messages..."
 
 	def visualize(self):
@@ -77,6 +79,16 @@ class PurePursuit(object):
 		self.trajectory.clear()
 		self.trajectory.fromPolygon(msg.polygon)
 		self.trajectory.publish_viz(duration=0.0)
+
+	def pose_callback(self, msg):
+		pose = np.array([msg.pose.position.x, msg.pose.position.y, Utils.quaternion_to_angle(msg.pose.pose.orientation)])
+		self.pure_pursuit(pose)
+
+		# this is for timing info
+		self.odom_timer.tick()
+		self.iters += 1
+		if self.iters % 20 == 0:
+			print "Control fps:", self.odom_timer.fps()
 
 	def odom_callback(self, msg):
 		''' Extracts robot state information from the message, and executes pure pursuit control.
