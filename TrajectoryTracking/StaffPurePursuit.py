@@ -25,7 +25,7 @@ class PurePursuit(object):
 	def __init__(self):
 		self.trajectory_topic = rospy.get_param("~trajectory_topic")
 		self.alternate_trajectory_topic = rospy.get_param("~alternate_trajectory_topic")
-		self.odom_topic       = rospy.get_param("~odom_topic")
+		# self.odom_topic       = rospy.get_param("~odom_topic")
 		self.lookahead        = rospy.get_param("~lookahead")
 		self.max_reacquire    = rospy.get_param("~max_reacquire")
 		self.speed            = float(rospy.get_param("~speed"))
