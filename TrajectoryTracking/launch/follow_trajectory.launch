@@ -1,0 +1,27 @@
+<launch>
+
+	<arg name="trajectory" default="/home/racecar/racecar-ws/src/final_challenge/TrajectoryTracking/paths/Path-Fixed.txt"/>
+
+	<node pkg="final_challenge" type="TrajectoryLoader.py" name="Trajectory_loader">
+		<param name="trajectory" value="$(arg trajectory)"/>
+		<param name="trajectory_topic" value="/trajectory/current"/>
+	</node>
+
+	<arg name="lookahead" default="1.5"/>
+	<arg name="max_reacquire" default="3.0"/>
+	<arg name="speed" default="1.5"/>
+	
+	<node pkg="final_challenge" type="StaffPurePursuit.py" name="Trajectory_follower">
+		<param name="trajectory_topic" value="/trajectory/current"/>
+		<param name="alternate_trajectory_topic" value="/trajectory/alternate"/>
+		<param name="lookahead" value="$(arg lookahead)"/>
+		<!-- if the car is between lookahead and max_reacquire meters, it will attempt to
+		     navigate to the nearest point on the trajectory rather than just stopping -->
+		<param name="max_reacquire" value="$(arg max_reacquire)"/>
+		<param name="speed" value="$(arg speed)"/>
+
+		<param name="wheelbase" value="0.25"/>
+		<param name="wrap" value="0"/>
+		<param name="drive_topic" value="/vesc/high_level/ackermann_cmd_mux/input/nav_0"/>
+	</node>
+</launch>
