@@ -8,17 +8,14 @@ from utils import LineTrajectory
 class LoadTrajectory(object):
 	""" Loads a trajectory from the file system and publishes it to a ROS topic.
 	"""
-	def __init__(self):
-		self.path           = rospy.get_param("~trajectory")
-		self.should_publish = bool(rospy.get_param("~publish"))
-		self.pub_topic      = rospy.get_param("~topic")
+	def __init__(self, path_to_file):
+		self.pub_topic = rospy.get_param("~trajectory_topic")
 
 		# initialize and load the trajectory
 		self.trajectory = LineTrajectory("/loaded_trajectory")
-		self.trajectory.load(self.path)
+		self.trajectory.load(path_to_file)
 
-		if self.should_publish:
-			self.traj_pub = rospy.Publisher(self.pub_topic, PolygonStamped, queue_size=1)
+		self.traj_pub = rospy.Publisher(self.pub_topic, PolygonStamped, queue_size=1)
 
 		# need to wait a short period of time before publishing  the first message
 		time.sleep(0.5)
@@ -27,8 +24,7 @@ class LoadTrajectory(object):
 		self.trajectory.publish_viz(duration=3.0)
 
 		# send the trajectory
-		if self.should_publish:
-			self.publish_trajectory()
+		self.publish_trajectory()
 
 	def publish_trajectory(self):
 		print "Publishing trajectory to:", self.pub_topic
@@ -36,6 +32,6 @@ class LoadTrajectory(object):
 
 if __name__=="__main__":
 	rospy.init_node("load_trajectory")
+
 	pf = LoadTrajectory()
-	if bool(rospy.get_param("~spin")):
-		rospy.spin()
+	rospy.spin()
