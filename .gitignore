@@ -1,0 +1,8 @@
+# Compiled python files
+*.pyc
+
+# Vim swap files
+*.sw*
+
+# Collected data files
+*.bag

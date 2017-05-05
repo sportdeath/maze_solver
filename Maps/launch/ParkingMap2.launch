@@ -1,0 +1,4 @@
+<launch>
+    <arg name="map" default="$(find final_challenge)/Maps/ParkingMap2.yaml"/>
+    <node pkg="map_server" name="map_server" type="map_server" args="$(arg map)" />
+</launch>
