@@ -45,6 +45,7 @@ class RRT:
                 if tree[-1].cost < bestCost:
                     bestGoal = tree[-1]
                     bestCost = tree[-1].cost
+
             RRT_ITERATIONS += 1
 
         if bestGoal:

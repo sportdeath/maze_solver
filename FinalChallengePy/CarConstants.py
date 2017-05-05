@@ -22,6 +22,7 @@ CAR_REAR_LENGTH = 0.1 + 0.1
 # The distance in front of the back axle
 #CAR_FORWARD_LENGTH = 0.3 # meters
 CAR_FORWARD_LENGTH = 0.3 + 0.1
+
 #CAR_WIDTH = 0.2 # meters
 CAR_WIDTH = 0.45
 
