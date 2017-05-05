@@ -1,5 +1,7 @@
 import numpy as np
 
+from FinalChallengePy.Utils.GeomUtils import GeomUtils
+
 from FinalChallengePy.CarConstants import *
 
 class PurePursuit:
@@ -15,13 +17,7 @@ class PurePursuit:
         angle = np.arccos(state.getOrientation()[1]) \
                 * np.sign(state.getOrientation()[0])
 
-        sinAngle = np.sin(angle)
-        cosAngle = np.cos(angle)
-        rotationMatrix = np.array(
-                [[cosAngle, -sinAngle],
-                 [sinAngle, cosAngle]])
-
-        return np.dot(rotationMatrix, translatedPoint)
+        return GeomUtils.rotateVector(translatedPoint, angle)
 
     """
     goal point is relative to the robot's

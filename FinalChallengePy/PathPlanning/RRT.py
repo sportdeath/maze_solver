@@ -11,7 +11,7 @@ class RRTNode:
         self.parent = parent
 
 class RRT:
-    MAX_RRT_ITERATIONS = 150
+    MAX_RRT_ITERATIONS = 100
     MAX_OPTIMIZATION_ITERATIONS = 100
 
     def __init__(self, mapMsg):
@@ -21,9 +21,7 @@ class RRT:
         self.unoccupiedPoints = MapUtils.getUnoccupiedPoints(self.mapMsg)
 
     def computePath(self, init, goal, backwards=False):
-        RRT_ITERATIONS = 0
         tree = [RRTNode(init, 0, None)]
-        newState = True
 
         goalStates = [goal]
         if backwards:
@@ -39,6 +37,8 @@ class RRT:
         bestCost = np.inf
         bestGoal = None
 
+        newState = True
+        RRT_ITERATIONS = 0
         while RRT_ITERATIONS < self.MAX_RRT_ITERATIONS:
             newState = self.updateTree(tree,newState,goalStates,backwards)
             if newState == "Goal":
@@ -52,6 +52,7 @@ class RRT:
             self.path = RRT.treeToPath(tree, bestGoal)
             self.optimize(backwards)
             return tree
+
         print "NO PATH FOUND"
         return [(init.getPosition(), False)]
 
@@ -151,18 +152,32 @@ class RRT:
 
         return (forwardList, backwardList)
 
-    def getPaths(self, oriented=False, goalExtension=0.):
+    def getPaths(self, oriented = False, goalExtension=0.):
         paths = []
         previousNode = self.path[0]
 
         for i in xrange(1,len(self.path)):
             node = self.path[i]
             steer = Steer(previousNode.state, node.state, self.rangeMethod)
-            # TODO: only add extension if it is the last of its sign...
-            paths.append(steer.getPoints(oriented, goalExtension))
+
+            # only add extension if it is the last of its sign...
+            if i == len(self.path) - 1 or node.state.isBackwards() != self.path[i+1].state.isBackwards():
+                extension = goalExtension
+            else:
+                extension = 0.
+
+            # if it is the same,
+            # combine it with the previous path
+            if i != 1 and node.state.isBackwards() == self.path[i-1].state.isBackwards():
+                points = steer.getPoints(goalExtension=extension)
+                if oriented:
+                    paths[-1][0] += points
+                else:
+                    paths[-1] += points
+            else:
+                paths.append(steer.getPoints(oriented=oriented, goalExtension=extension))
+
             previousNode = node
-        
-        # TODO: combine paths that are oriented the same way.
 
         return paths
 
@@ -188,5 +203,3 @@ class RRT:
                                 randomState, 
                                 self.path[index - 1].cost + steer1.getLength(),
                                 self.path[index - 1])
-
-

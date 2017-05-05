@@ -16,12 +16,12 @@ CAR_AXLE_DISTANCE = 32.5/100. # meters
 MAX_STEERING_ANGLE = 0.34 # radians
 
 # The distance behind the back axle
-#CAR_REAR_LENGTH = 0.1 # meters
-CAR_REAR_LENGTH = 0.1 + 0.1
+CAR_REAR_LENGTH = 0.1 # meters
+#CAR_REAR_LENGTH = 0.1 + 0.1
 
 # The distance in front of the back axle
-#CAR_FORWARD_LENGTH = 0.3 # meters
-CAR_FORWARD_LENGTH = 0.3 + 0.1
+CAR_FORWARD_LENGTH = 0.3 # meters
+#CAR_FORWARD_LENGTH = 0.3 + 0.1
 
 #CAR_WIDTH = 0.2 # meters
 CAR_WIDTH = 0.45

@@ -1,5 +1,8 @@
-from FinalChallengePy.CarConstants import *
 import numpy as np
+
+from FinalChallengePy.Utils.GeomUtils import GeomUtils
+
+from FinalChallengePy.CarConstants import *
 
 MIN_RADIUS = np.tan(MAX_STEERING_ANGLE)/CAR_AXLE_DISTANCE
 POINT_SPACING = CAR_FORWARD_LENGTH + CAR_REAR_LENGTH
@@ -26,14 +29,14 @@ class Steer:
             return
 
         # Which way do we turn at the start?
-        self.initSide = Steer.sign(
+        self.initSide = GeomUtils.sign(
                 np.cross(
                     positionDifference, 
                     init.getOrientation()))
 
         # Compute the center of the circle tangent
         # to the init state
-        initCenterNorm = self.initSide * Steer.getPerpendicular(init.getOrientation())
+        initCenterNorm = self.initSide * GeomUtils.getPerpendicular(init.getOrientation())
         self.initCircleCenter = init.getPosition() + (initCenterNorm * MIN_RADIUS)
 
         # Check for steer-ability:
@@ -44,14 +47,14 @@ class Steer:
             return
 
         # Which way do we turn at the end?
-        self.goalSide = Steer.sign(
+        self.goalSide = GeomUtils.sign(
                 np.cross(
                     goal.getOrientation(), 
                     positionDifference))
 
         # Compute the center of the circle tangent
         # to the goal state
-        goalCenterNorm = self.goalSide * Steer.getPerpendicular(goal.getOrientation())
+        goalCenterNorm = self.goalSide * GeomUtils.getPerpendicular(goal.getOrientation())
         self.goalCircleCenter = goal.getPosition() + (goalCenterNorm * MIN_RADIUS)
 
         # Compute the norm that  points from the
@@ -67,7 +70,7 @@ class Steer:
 
             # A line connecting the tangent points
             # on both circles is perpendicular to the circle norm
-            initTangentNorm = -self.initSide * Steer.getPerpendicular(circleNorm)
+            initTangentNorm = -self.initSide * GeomUtils.getPerpendicular(circleNorm)
             goalTangentNorm = initTangentNorm
         else:
             # If not, we are doing an S-Turn
@@ -78,7 +81,7 @@ class Steer:
             # that the tangent point is at.
             turningAngle = np.arccos(2 * MIN_RADIUS/circleDistance)
 
-            initTangentNorm = Steer.rotateVector(circleNorm, self.initSide * turningAngle)
+            initTangentNorm = GeomUtils.rotateVector(circleNorm, self.initSide * turningAngle)
             goalTangentNorm = -initTangentNorm
 
         # These are the tangent points
@@ -97,56 +100,25 @@ class Steer:
         goalNorm = (goal.getPosition() - self.goalCircleCenter)/MIN_RADIUS
 
         # Compute the angle from the start to the end
-        self.initAngle = self.getAngleBetweenVectors(
+        self.initAngle = GeomUtils.getAngleBetweenVectors(
                 initNorm, 
                 initTangentNorm, 
                 self.initSide)
-        self.goalAngle = Steer.getAngleBetweenVectors(
+        self.goalAngle = GeomUtils.getAngleBetweenVectors(
                 goalTangentNorm,
                 goalNorm, 
                 self.goalSide)
 
         # Compute the starting angle of the turn
-        self.initStartAngle = self.getAngle(initNorm)
-        self.goalStartAngle = self.getAngle(goalTangentNorm)
+        self.initStartAngle = GeomUtils.getAngle(initNorm)
+        self.goalStartAngle = GeomUtils.getAngle(goalTangentNorm)
 
         # Use ray marching with robot model to check for collisions
         self.exists = True
         self.steerable = self.isCollisionFree()
 
-    @staticmethod
-    def getPerpendicular(norm):
-        return np.array([norm[1], -norm[0]])
-
-    @staticmethod
-    def rotateVector(vector, angle):
-        sinAngle = np.sin(angle)
-        cosAngle = np.cos(angle)
-        rotationMatrix = np.array(
-                [[cosAngle, -sinAngle],
-                 [sinAngle, cosAngle]])
-        return np.dot(rotationMatrix, vector)
-
-    @staticmethod
-    def sign(value):
-        return (2 * (value > 0)) - 1
-
-    @staticmethod
-    def getAngle(vector):
-        return np.arccos(np.clip(vector[1],-1,1)) * Steer.sign(vector[0])
-
-    @staticmethod
-    def getAngleBetweenVectors(init, goal, direction):
-        initAngle = direction * Steer.getAngle(init)
-        goalAngle = direction * Steer.getAngle(goal)
-        if goalAngle < initAngle:
-            goalAngle += 2 * np.pi
-        return goalAngle - initAngle
-
     def getPoints(self, oriented=False, goalExtension=0.):
         points = []
-
-        # points.append(self.init.getPosition())
 
         # Draw points along init arc
         points += Steer.getPointsOnCircle(
@@ -210,7 +182,7 @@ class Steer:
         while angleOffset < totalAngle:
             angle = (direction * angleOffset) + startAngle
             axle = np.array([np.sin(angle), np.cos(angle)])
-            pointsAndNorms.append((MIN_RADIUS * axle + center, Steer.getPerpendicular(axle)))
+            pointsAndNorms.append((MIN_RADIUS * axle + center, GeomUtils.getPerpendicular(axle)))
             angleOffset += ANGLE_SPACING
 
         return pointsAndNorms
@@ -242,8 +214,8 @@ class Steer:
     def testCollisions(self, center, width, length, norm):
         verticalOffset = -norm * CAR_REAR_LENGTH
 
-        horizontalOffset = Steer.getPerpendicular(norm) * width/2.
-        angle = Steer.getAngle(norm)
+        horizontalOffset = GeomUtils.getPerpendicular(norm) * width/2.
+        angle = GeomUtils.getAngle(norm)
 
         minLength = CAR_REAR_LENGTH + length + CAR_FORWARD_LENGTH
 
