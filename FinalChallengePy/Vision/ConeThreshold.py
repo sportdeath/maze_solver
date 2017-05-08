@@ -45,21 +45,21 @@ class ConeThreshold:
         hsvImage = cv2.cvtColor(self.inputImage, cv2.COLOR_BGR2HSV)
 
         # Get masks
-        self.mask = self.getMax(hsvImage)
+        self.mask = self.getMask(hsvImage)
 
         # self.orangeMask = self.getOrangeMask(hsvImage)
         # self.greenMask = self.getGreenMask(hsvImage)
         # self.totalMask = cv2.bitwise_or(self.orangeMask, self.greenMask)
 
-        # # Get Contours
-        # self.contours = self.getContours(self.mask)
-        # # filter contours to select best
-        # self.bestContour = None
-        # self.bestHeight = None
-        # self.bestWidth = None
-        # self.bestxTop = None
-        # self.bestyTop = None
-        # self.filterContours()
+        # Get Contours
+        self.contours = self.getContours(self.mask)
+        # filter contours to select best
+        self.bestContour = None
+        self.bestHeight = None
+        self.bestWidth = None
+        self.bestxTop = None
+        self.bestyTop = None
+        self.filterContours()
 
     def getMask(self, hsvImage):
         # Threshold
@@ -177,7 +177,7 @@ class ConeThreshold:
         else:
             return -1
 
-    def getBoundedImage(self):
+    def getBoundedImage(self, color_text):
         boundedImage = self.getMaskedImage()
         self.filterContours()
         # matchValues = self.templateMatching()
@@ -197,9 +197,9 @@ class ConeThreshold:
                 color = [0,0,255]
 
             # text = "TM: " + str(matchValue)[:5] + "\n" + "AR: " + str(aspectRatio)[:5]
-            text = "AR: " + str(aspectRatio)[:4]
-            text += "D: " + str(self.DIST_TIMES_FOCAL_LENGTH_PX/height)[:4] +\
-                    "A: " + str(self.getAngle())[:4]
+            # text = "AR: " + str(aspectRatio)[:4]
+            text = "D: " + str(self.DIST_TIMES_FOCAL_LENGTH_PX/height)[:4] + \
+                    "C: " + color_text
 
             cv2.rectangle( \
                     boundedImage,\
@@ -213,7 +213,7 @@ class ConeThreshold:
                     text,\
                     (xTop, yTop),\
                     cv2.FONT_HERSHEY_PLAIN,\
-                    2,\
+                    1,\
                     color,\
                     2)
 
@@ -221,13 +221,22 @@ class ConeThreshold:
 
 
 # Testing code
-# img = cv2.imread("/home/katy/racecar-ws/src/final_challenge/FinalChallengePy/Vision/images/redgreen10.png")
+HSV_MIN_ORANGE = np.array([2, 182, 133])
+HSV_MAX_ORANGE = np.array([7, 254, 225])
 
-# c = ConeThreshold(img)
+HSV_MIN_GREEN = np.array([74, 73, 39])
+HSV_MAX_GREEN = np.array([109, 185, 85]) # might need to bump the last one up to like 85
 
-# cv2.imshow("original", img)
+img = cv2.imread("/home/katy/racecar-ws/src/final_challenge/FinalChallengePy/Vision/images/redgreen8.png")
 
-# cv2.imshow("masked", c.getMaskedImage())
-# cv2.waitKey(0)
+redThreshold = ConeThreshold(img, HSV_MIN_ORANGE, HSV_MAX_ORANGE)
+greenThreshold = ConeThreshold(img, HSV_MIN_GREEN, HSV_MAX_GREEN)
 
-# cv2.destroyAllWindows()
+cv2.imshow("original", img)
+
+combined = cv2.add(redThreshold.getBoundedImage("red"), greenThreshold.getBoundedImage("green"))
+cv2.imshow("masked", combined)
+
+cv2.waitKey(0)
+
+cv2.destroyAllWindows()
