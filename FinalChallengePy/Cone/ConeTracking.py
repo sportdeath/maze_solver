@@ -8,10 +8,15 @@ from cv_bridge import CvBridge # package to convert rosmsg<->cv2
 
 from FinalChallengePy.Cone.ConeThreshold import ConeThreshold
 from FinalChallengePy.Cone.Cone import Cone
+from FinalChallengePy.Cone.Constants import *
+
+from FinalChallengePy.PathPlanning.RobotState import RobotState
 
 import numpy as np
 
 class ConeTracking:
+    
+    referenceState = RobotState(0.,0.,0.)
 
     def __init__(self):
         self.redCones = []
@@ -21,8 +26,8 @@ class ConeTracking:
         self.bridge = CvBridge()
 
         # Uncomment for debugging purposes
-        # self.pubImage = rospy.Publisher("/masked_image",\
-        #         Image, queue_size=1)
+        self.pubImage = rospy.Publisher("/masked_image",\
+                Image, queue_size=1)
 
         self.pubConeInfo = rospy.Publisher(
                 "/cone_info", 
@@ -45,8 +50,6 @@ class ConeTracking:
     message is received on the rostopic we subscribed to.
     """
     def processImage(self, image_msg):
-        rospy.loginfo("Processing Image")
-
         # convert rosmsg to cv2 type
         imageCv = self.bridge.imgmsg_to_cv2(image_msg)
 
@@ -54,28 +57,31 @@ class ConeTracking:
         greenThreshold = ConeThreshold(imageCv, HSV_MIN_GREEN, HSV_MAX_GREEN)
         
         # Uncomment for debugging purposes
-        # outputCombined = cv2.add(redThreshold.getBoundedImage("red"), greenThreshold.getBoundedImage("green"))
+        outputCombined = cv2.add(
+            redThreshold.getBoundedImage("red"), 
+            greenThreshold.getBoundedImage("green"))
 
         # convert cv2 message back to rosmsg
-        # image_ros_msg = self.bridge.cv2_to_imgmsg(outputCombined,"bgr8")
+        image_ros_msg = self.bridge.cv2_to_imgmsg(outputCombined,"bgr8")
 
         # publish rosmsg 
-        # self.pubImage.publish(image_ros_msg)
+        self.pubImage.publish(image_ros_msg)
 
-        redCone = Cone(redThreshold.getBottomCenterPoint())
-        greenCone = Cone(greenThreshold.getBottomCenterPoint())
+        if redThreshold.doesExist():
+            redCone = Cone(self.referenceState, redThreshold.getBottomCenterPoint())
+            self.updateCones(redCone, self.redCones, RED_CONE_DIRECTION)
 
-        ConeTracking.updateCones(redCone, self.redCones, RED_CONE_DIRECTION)
-        ConeTracking.updateCones(greenCone, self.greenCones, GREEN_CONE_DIRECTION)
-        
+        if greenThreshold.doesExist():
+            greenCone = Cone(self.referenceState, greenThreshold.getBottomCenterPoint())
+            self.updateCones(greenCone, self.greenCones, GREEN_CONE_DIRECTION)
     
-    @staticmethod
-    def updateCone(cone, cones, direction):
+    def updateCones(self, cone, cones, direction):
         if cone.isNewCone(cones):
             msg = ConeInfo()
             msg.direction = direction
             worldCoordinates = cone.getPosition()
-            msg.location = worldCoordinates
+            msg.location.x = worldCoordinates[0]
+            msg.location.y = worldCoordinates[1]
             self.pubConeInfo.publish(msg)
             cones.append(cone)
 

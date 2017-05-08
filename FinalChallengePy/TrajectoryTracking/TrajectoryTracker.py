@@ -47,7 +47,7 @@ class TrajectoryTracker:
         if visualizeMethod:
             TrajectoryTracker.visualize(state, goalPointGlobal, visualizeMethod)
 
-        goalPointLocal = GlobalLocalUtils.globalToLocal(state, goalPointGlobal)
+        goalPointLocal = LocalGlobalUtils.globalToLocal(state, goalPointGlobal)
 
         velocity = CAR_VELOCITY
         if len(points) - self.pointIndex < NUM_TUNE_POINTS:

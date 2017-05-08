@@ -11,7 +11,7 @@ from FinalChallengePy.Vision.Constants import *
 class TransformationGenerator:
     def __init__(self):
         # Real world values
-        self.sources = [np.array([0.,0.,1.]), np.array([1.,1.,1.])]
+        self.sources = [np.array([0.,0.6,1.]), np.array([0.,5.,1.])]
 
         # Get pixel values
         self.pixelCoords = []

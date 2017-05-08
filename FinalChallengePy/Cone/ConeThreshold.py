@@ -12,6 +12,7 @@ http://www.pyimagesearch.com/2014/08/04/opencv-python-color-detection/
 class ConeThreshold:
     ASPECT_MIN = 0.5
     ASPECT_MAX = 1
+    exists = True
 
     def __init__(self, inputImage, thresholdMin, thresholdMax):
         self.inputImage = inputImage
@@ -33,6 +34,9 @@ class ConeThreshold:
         self.bestxTop = None
         self.bestyTop = None
         self.filterContours()
+        
+        if self.bestContour is None:
+            self.exists = False
 
     def getMask(self, hsvImage):
         # Threshold
@@ -42,6 +46,9 @@ class ConeThreshold:
         # Dilate
         mask = cv2.dilate(mask, None, iterations = 3)
         return mask
+    
+    def doesExist(self):
+        return self.exists
 
     def getContours(self, mask):
         _, contours ,_ = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)

@@ -1,3 +1,6 @@
+import numpy as np
+from FinalChallengePy.Utils.GeomUtils import GeomUtils
+
 class LocalGlobalUtils:
     @staticmethod
     def globalToLocal(state, globalPoint):
