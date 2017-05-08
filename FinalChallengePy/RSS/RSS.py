@@ -7,6 +7,7 @@ from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import PoseStamped
 from ackermann_msgs.msg import AckermannDriveStamped
 from final_challenge.msg import ConeInfo
+from visualization_msgs.msg import Marker
 
 from FinalChallengePy.Utils.GeomUtils import GeomUtils
 
@@ -20,8 +21,6 @@ from FinalChallengePy.TrajectoryTracking.TrajectoryTracker import TrajectoryTrac
 from FinalChallengePy.TrajectoryTracking.Constants import *
 
 from FinalChallengePy.Cone.Constants import RED_CONE_DIRECTION
-
-
 
 class RSS(VisualizeLine):
     def __init__(self):
