@@ -39,55 +39,52 @@ float32[] intensities # intensity data [device-specific units]. If your
 """
 
 class Safety():
-	def __init__(self):
+    def __init__(self):
 
-		# Init subscribers and publishers
-		self.sub = rospy.Subscriber("/scan", LaserScan,\
-				self.lidarCB, queue_size=1)
-				
-		self.pub = rospy.Publisher("/vesc/low_level/ackermann_cmd_mux/input/safety",\
-				AckermannDriveStamped, queue_size =1 )
+        # Init subscribers and publishers
+        self.sub = rospy.Subscriber("/scan", LaserScan,\
+                self.lidarCB, queue_size=1)
+                
+        self.pub = rospy.Publisher("/vesc/low_level/ackermann_cmd_mux/input/safety",\
+                AckermannDriveStamped, queue_size =1 )
 
-		self.max_distance = 1
-				
-		rospy.loginfo("Safety node initialized")
+        self.max_distance = 1
+                
+        rospy.loginfo("Safety node initialized")
 
 
-	def lidarCB(self, msg):
-		'''
-		This callback is called everytime the laserscanner sends us data.
-		This is about 40hz. The message received is a laserscan message
-		'''
-		num_scans = len(msg.ranges)
-		min_index = int((-np.pi/6 - msg.angle_min)/msg.angle_increment)
-		max_index = int(min_index + np.pi/3/msg.angle_increment)
-		total = 0
-		num_points = 0 	
-		
-		for i in msg.ranges[min_index:max_index]:
-			if ((msg.range_max > i)):
-				total += i
-				num_points += 1
+    def lidarCB(self, msg):
+        '''
+        This callback is called everytime the laserscanner sends us data.
+        This is about 40hz. The message received is a laserscan message
+        '''
+        num_scans = len(msg.ranges)
+        min_index = int((-np.pi/6 - msg.angle_min)/msg.angle_increment)
+        max_index = int(min_index + np.pi/3/msg.angle_increment)
+        total = 0
+        num_points = 0  
+        
+        for i in msg.ranges[min_index:max_index]:
+            if ((msg.range_max > i)):
+                total += i
+                num_points += 1
 
-		if (num_points != 0):
-			something_in_front_of_robot = (total/float(num_points) < self.max_distance)
-		else:
-			something_in_front_of_robot = 0
+        if (num_points != 0):
+            something_in_front_of_robot = (total/float(num_points) < self.max_distance)
+        else:
+            something_in_front_of_robot = 0
 
-		# If the autonomous stack is trying to run us into a wall, then stop.
-		if ( something_in_front_of_robot ):
-			stop_msg = AckermannDriveStamped()
-			rospy.loginfo('stopped for obstacle')
-			self.pub.publish(stop_msg)
-			
-		
-
-2
+        # If the autonomous stack is trying to run us into a wall, then stop.
+        if ( something_in_front_of_robot ):
+            stop_msg = AckermannDriveStamped()
+            rospy.loginfo('stopped for obstacle')
+            self.pub.publish(stop_msg)
+            
 if __name__=="__main__":
-	# Tell ROS that we're making a new node.
-	rospy.init_node("Safety_Node")
+    # Tell ROS that we're making a new node.
+    rospy.init_node("Safety_Node")
 
-	# Init the node
-	Safety()
-	# Don't let this script exit while ROS is still running
-	rospy.spin()
+    # Init the node
+    Safety()
+    # Don't let this script exit while ROS is still running
+    rospy.spin()
