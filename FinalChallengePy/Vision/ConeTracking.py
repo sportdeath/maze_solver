@@ -18,7 +18,7 @@ class ConeTracking:
     HSV_MAX_ORANGE = np.array([7, 254, 225])
 
     HSV_MIN_GREEN = np.array([74, 73, 39])
-    HSV_MAX_GREEN = np.array([109, 185, 85]) # might need to bump the last one up to like 85
+    HSV_MAX_GREEN = np.array([109, 185, 85])
 
     RED_CONE_DIRECTION = 1
     GREEN_CONE_DIRECTION = -RED_CONE_DIRECTION
@@ -28,8 +28,7 @@ class ConeTracking:
         # create bridge to convert to and from cv2 and rosmsg
         self.bridge = CvBridge()
 
-        # Comment back in for debugging
-
+        # Uncomment for debugging purposes
         # self.pubImage = rospy.Publisher("/masked_image",\
         #         Image, queue_size=1)
 
@@ -42,6 +41,8 @@ class ConeTracking:
         # recieve the message
         self.subImage = rospy.Subscriber("/zed/rgb/image_rect_color",\
                 Image, self.processImage, queue_size=1)
+
+        self.coneLocList = []
 
         # report initalization success
         rospy.loginfo("Cone Tracking Initialized.")
@@ -60,36 +61,44 @@ class ConeTracking:
         greenThreshold = ConeThreshold(imageCv, self.HSV_MIN_GREEN, self.HSV_MAX_GREEN)
         
         # Uncomment for debugging purposes
-        # outputImage = threshold.getBoundedImage()
-        # outputImage = threshold.getMatchedImage()
+        # outputCombined = cv2.add(redThreshold.getBoundedImage("red"), greenThreshold.getBoundedImage("green"))
 
         # convert cv2 message back to rosmsg
-        # image_ros_msg = self.bridge.cv2_to_imgmsg(outputImage,"bgr8")
+        # image_ros_msg = self.bridge.cv2_to_imgmsg(outputCombined,"bgr8")
 
         # publish rosmsg 
         # self.pubImage.publish(image_ros_msg)
 
-        if redThreshold.newCone():
+        redCalculations = ConeCalculations(redThreshold.getBottomCenterPoint())
+        greenCalculations = ConeCalculations(greenThreshold.getBottomCenterPoint())
+
+        # There is probably a better way to do this
+        if redCalculations.isNewCone(self.coneLocList):
             msg = ConeInfo()
             msg.direction = self.RED_CONE_DIRECTION
-            msg.location = circleThreshold.getWorldCoordinatesAsPoint()
+
+            worldCoordinates = redCalculations.getWorldCoordinatesAsPoint()
+            msg.location = worldCoordinates
+
+            coneLocList.append(np.array(worldCoordinates.x, worldCoordinates.y))
 
             self.pubConeInfo.publish(msg)
 
-        if greenThreshold.newCone():
+        if greenCalculations.isNewCone(self.coneLocList):
             msg = ConeInfo()
             msg.direction = self.GREEN_CONE_DIRECTION
-            msg.location = circleThreshold.getWorldCoordinatesAsPoint()
+            
+            worldCoordinates = greenCalculations.getWorldCoordinatesAsPoint()
+            msg.location = worldCoordinates
+
+            coneLocList.append(np.array(worldCoordinates.x, worldCoordinates.y))
 
             self.pubConeInfo.publish(msg)
 
 if __name__=="__main__":
-    # initalize the ros node
     rospy.init_node('ConeTracking')
 
-    # create Echo to start the image passthrough
     coneTracking = ConeTracking()
 
-    # continue running echo until node is killed from outside process
     rospy.spin()
 
