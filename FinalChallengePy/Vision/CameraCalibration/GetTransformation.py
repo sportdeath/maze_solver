@@ -1,48 +1,34 @@
 import numpy as np
 
 def getTransformation(sources, destinations):
-    sourceDiff = sources[1] - sources[0]
-    destinationDiff = destinations[1] - destinations[0]
+    numPoints = len(sources)
+    A = np.zeros((2*numPoints, 8))
+    b = np.zeros(8)
 
-    sourceNorm = np.linalg.norm(sourceDiff)
-    destinationNorm = np.linalg.norm(destinationDiff)
+    for i in xrange(numPoints):
+        # The x -> x' pairs
+        A[i,0] = sources[i][0]
+        A[i,1] = sources[i][1]
+        A[i,2] = 1.
+        A[i,6] = -sources[i][0]*destinations[i][0]
+        A[i,7] = -sources[i][1]*destinations[i][0]
 
-    # Determine the scaling factor
-    scalingFactor = sourceNorm/destinationNorm
+        b[i] = destinations[i][0]
 
-    # Determine the rotation matrix
-    sourceUnit = sourceDiff/sourceNorm
-    destinationUnit = destinationDiff/destinationNorm
+        # The y -> y' pairs
+        A[numPoints + i,3] = sources[i][0]
+        A[numPoints + i,4] = sources[i][1]
+        A[numPoints + i,5] = 1.
+        A[numPoints + i,6] = -sources[i][0]*destinations[i][1]
+        A[numPoints + i,7] = -sources[i][1]*destinations[i][1]
 
-    axis = np.cross(sourceUnit, destinationUnit)
-    cos = np.dot(sourceUnit, destinationUnit)
-    crossProductMatrix = np.array(
-            [[0, -axis[2], axis[1]],
-             [axis[2], 0, -axis[0]],
-             [-axis[1], axis[0], 0]])
+        b[numPoints + i] = destinations[i][1]
 
-    rotationMatrix = np.identity(3) + \
-            crossProductMatrix + \
-            (np.dot(crossProductMatrix, crossProductMatrix) * (1/(1+cos)))
+    Hv = np.dot(np.linalg.inv(A), b)
 
-    # Determine the translation vector
-    translationVector = scalingFactor*destinations[0] - np.dot(rotationMatrix, sources[0])
+    H = np.array(
+            [[Hv[0], Hv[1], Hv[2]],
+             [Hv[3], Hv[4], Hv[5]],
+             [Hv[6], Hv[7],   1. ]])
 
-    return (scalingFactor, rotationMatrix, translationVector)
-
-if __name__ == "__main__":
-    # Test with random vectors
-    randomVectors = []
-    for i in xrange(4):
-        randomVector = np.random.rand(3)
-        randomVectors.append(randomVector)
-
-    sources = [randomVectors[0], randomVectors[1]]
-    destinations = [randomVectors[2], randomVectors[3]]
-
-    (scalingFactor, rotationMatrix, translationVector) = \
-            getTransformation(sources, destinations)
-
-    for i in xrange(2):
-        output = (np.dot(rotationMatrix, sources[i]) + translationVector)/scalingFactor
-        print("This should be zero: ", destinations[i] - output)
+    return H

@@ -32,25 +32,22 @@ class TransformationGenerator:
         self.pixelCoords.append(point)
 
         # Generate the transformation
-        if len(self.pixelCoords) >= 2:
+        if len(self.pixelCoords) >= len(self.sources):
             self.generateTransformation()
 
     def generateTransformation(self):
         cameraMatrixInv = np.loadtxt(CAMERA_MATRIX_INV_FILE)
 
         print("Generating transformations")
-        destinations = [0]*2
-        for i in xrange(2):
+        destinations = [0]*len(self.sources)
+        for i in xrange(len(self.sources)):
             destinations[i] = np.dot(cameraMatrixInv, self.pixelCoords[i])
 
-        (scalingFactor, rotationMatrix, translationVector) = \
-                getTransformation(self.sources, destinations)
+        transformationMatrix = getTransformation(self.sources, destinations)
 
-        # Write them to file
-        np.savetxt(SCALING_FACTOR_FILE, np.array([scalingFactor]))
-        np.savetxt(TRANSLATION_VECTOR_FILE, translationVector)
-        np.savetxt(ROTATION_MATRIX_FILE, rotationMatrix)
-        np.savetxt(ROTATION_MATRIX_INV_FILE, np.linalg.inv(rotationMatrix))
+        # Write to file
+        np.savetxt(TRANSFORMATION_MATRIX_FILE, transformationMatrix)
+        np.savetxt(TRANSFORMATION_MATRIX_INV_FILE, np.linalg.inv(transformationMatrix))
         print("Written to file")
 
         from FinalChallengePy.Vision.CoordinateTransformations import CoordinateTransformations
