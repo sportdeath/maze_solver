@@ -4,6 +4,8 @@ import numpy as np
 
 import rospy
 from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import PoseStamped
+from ackermann_msgs.msg import AckermannDriveStamped
 
 from FinalChallengePy.Utils.GeomUtils import GeomUtils
 
@@ -13,13 +15,24 @@ from FinalChallengePy.PathPlanning.VisualizeLine import VisualizeLine
 from FinalChallengePy.PathPlanning.RRT import RRT
 
 from FinalChallengePy.RSS.Constants import *
+from FinalChallengePy.TrajectoryTracking.TrajectoryTracker import TrajectoryTracker
+from FinalChallengePy.TrajectoryTracking.Constants import *
 
 class RSS(VisualizeLine):
     def __init__(self):
-        VisualizeLine.__init__(self,"RSS",numPublishers=3)
+        VisualizeLine.__init__(self,"RSS",numPublishers=4)
 
         self.mapMsg = MapUtils.getMap()
         self.RRT = RRT(self.mapMsg)
+
+        # Load the points from file
+        self.points = list(np.loadtxt(BIG_PATH_FILE))
+        self.trajectoryTracker = None
+
+        self.commandPub = rospy.Publisher(
+                "/vesc/high_level/ackermann_cmd_mux/input/nav_0",
+                AckermannDriveStamped,
+                queue_size = 1)
 
         self.clickSub = rospy.Subscriber(
                 "/clicked_point", 
@@ -27,12 +40,50 @@ class RSS(VisualizeLine):
                 self.clickedPoint, 
                 queue_size=1)
 
-        # Load the points from file
-        self.points = list(np.loadtxt(BIG_PATH_FILE))
+        self.poseSub = rospy.Subscriber(
+                "/pf/viz/inferred_pose", 
+                PoseStamped, 
+                self.gotLocalizationData, 
+                queue_size = 1)
 
         for i in xrange(10):
             self.visualizePoints()
             rospy.sleep(0.1)
+
+    def goalPointVisualizer(self, points):
+        self.visualize(points,(0.,0.,1.),publisherIndex=1,lineList=True)
+
+    def gotLocalizationData(self, msg):
+        x = msg.pose.position.x
+        y = msg.pose.position.y
+        theta = MapUtils.quaternionToAngle(msg.pose.orientation)
+
+        self.state = RobotState(x, y, theta)
+
+        # Move state backwards
+        self.state.lidarToRearAxle()
+
+        if self.trajectoryTracker:
+            self.trajectoryTracker.publishCommand(self.state, self.commandPub, self.goalPointVisualizer)
+        else:
+            # determine start state
+            goalPosition = self.points[0]
+            goalOrientation = self.points[1] - self.points[0]
+            goalOrientation /= np.linalg.norm(goalOrientation)
+            goalState = RobotState(goalPosition, goalOrientation)
+
+            # compute a path to it
+            self.RRT.computePath(self.state, goalState, backwards=True)
+            pathsToStart = self.RRT.getPaths(True, LOOK_AHEAD_DISTANCE) 
+            paths = pathsToStart + [(self.points, False)]
+
+            # Visualize
+            (forwardPoints, backwardsPoints) = self.RRT.getLineLists()
+            self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=2,lineList=True)
+            self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=3,lineList=True)
+            
+            # Go!
+            self.trajectoryTracker = TrajectoryTracker(paths)
 
     def clickedPoint(self, msg):
         x = msg.point.x
@@ -93,6 +144,8 @@ class RSS(VisualizeLine):
 
         # insert the new path into points
         self.points[initIndex : goalIndex + 1] = newPath
+
+        self.trajectoryTracker.setPoints(self.points)
 
         # Visualize the change
         self.visualizePoints()

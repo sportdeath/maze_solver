@@ -171,7 +171,7 @@ class RRT:
             if i != 1 and node.state.isBackwards() == self.path[i-1].state.isBackwards():
                 points = steer.getPoints(goalExtension=extension)
                 if oriented:
-                    paths[-1][0] += points
+                    paths[-1] = (paths[-1][0] + points, paths[-1][1])
                 else:
                     paths[-1] += points
             else:

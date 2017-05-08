@@ -5,11 +5,19 @@ from FinalChallengePy.CarConstants import *
 
 from FinalChallengePy.TrajectoryTracking.Constants import *
 
+import rospy
+from ackermann_msgs.msg import AckermannDriveStamped
+from std_msgs.msg import Header
+
 class TrajectoryTracker:
     def __init__(self, paths):
         self.paths = paths # [(points, orientation)...]
         self.pointIndex = 0
         self.pathIndex = 0
+
+    def setPoints(self, points):
+        # Set the points in the last path
+        self.paths[-1] = (points, self.paths[-1][1])
 
     """
     returns (velocity, angle)
@@ -71,3 +79,18 @@ class TrajectoryTracker:
 
         # Visualize
         visualizeMethod(points)
+
+    def publishCommand(self, state, publisher, visualizer = None):
+        velocity, angle = self.getControlAngle(
+                state,
+                visualizer)
+
+        header = Header()
+        header.stamp = rospy.Time.now()
+        header.frame_id = "pure_pursuit"
+
+        drivingCommand = AckermannDriveStamped()
+        drivingCommand.drive.speed = velocity
+        drivingCommand.drive.steering_angle = angle
+
+        publisher.publish(drivingCommand)
