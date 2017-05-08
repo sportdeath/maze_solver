@@ -48,7 +48,7 @@ class Safety():
 		self.pub = rospy.Publisher("/vesc/low_level/ackermann_cmd_mux/input/safety",\
 				AckermannDriveStamped, queue_size =1 )
 
-		self.max_distance = rospy.get_param("~max_distance")
+		self.max_distance = 1
 				
 		rospy.loginfo("Safety node initialized")
 
@@ -70,12 +70,9 @@ class Safety():
 				num_points += 1
 
 		if (num_points != 0):
-			something_in_front_of_robot = (total/float(num_points) < .5)
-			#rospy.loginfo("average_range = %f, something_in_front_of_robot = %f",\
-			 #total/float(num_points), something_in_front_of_robot)
+			something_in_front_of_robot = (total/float(num_points) < self.max_distance)
 		else:
 			something_in_front_of_robot = 0
-			#rospy.loginfo("no data")
 
 		# If the autonomous stack is trying to run us into a wall, then stop.
 		if ( something_in_front_of_robot ):
