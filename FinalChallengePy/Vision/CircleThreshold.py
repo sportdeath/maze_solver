@@ -5,8 +5,9 @@ import numpy as np
 from CameraSettings import *
 
 class CircleThreshold:
-    HSV_MIN = np.array([6, 90, 160])
-    HSV_MAX = np.array([15, 255, 255])
+    # Obsolete
+    # HSV_MIN = np.array([6, 90, 160])
+    # HSV_MAX = np.array([15, 255, 255])
 
     HSV_MIN_ORANGE = np.array([2, 182, 133])
     HSV_MAX_ORANGE = np.array([7, 254, 225])
@@ -25,9 +26,14 @@ class CircleThreshold:
 
     def threshold(self, inputImage):
         hsvImage = cv2.cvtColor(inputImage, cv2.COLOR_BGR2HSV)
-        self.mask = cv2.inRange(hsvImage, self.HSV_MIN_ORANGE, self.HSV_MAX_ORANGE)
+        orange_mask = cv2.inRange(hsvImage, self.HSV_MIN_ORANGE, self.HSV_MAX_ORANGE)
+        green_mask = cv2.inRange(hsvImage, self.HSV_MIN_GREEN, self.HSV_MAX_GREEN) 
+
+        self.mask = cv2.add(orange_mask, green_mask)
+
+        # Remove noise
         self.mask = cv2.erode(self.mask, None, iterations = 2)
-        # Dilate
+        # Return to original sizes
         self.mask = cv2.dilate(self.mask, None, iterations = 2)
 
     def findBestContour(self):
@@ -64,17 +70,29 @@ class CircleThreshold:
         self.findBestContour()
         pixelPoint = max(self.contourPoints, key = lambda x: x[0][1])[0]
         worldCoord = self.CoordinateTransformations.transformPixelsToWorld(pixelPoint)
-        return pixelPoint, worldCoord
+
+        hsv = cv2.cvtColor(inputImage, cv2.COLOR_BGR2HSV)
+        hsv_channel1 = hsv.item(pixelPoint[1], pixelPoint[0], 0)
+
+        color = "none"
+        if 2 < hsv_channel1 < 7:
+            color = "orange"
+
+        if 74 < hsv_channel1 < 109:
+            color = "green"
+
+        return pixelPoint, worldCoord, color
 
 if __name__ == "__main__":
     c = CircleThreshold(150)
 
     img = cv2.imread("/home/katy/racecar-ws/src/final_challenge/FinalChallengePy/Vision/images/x50y200g.png")
 
-    pixelPoint, worldCoord = c.getDistance(img)
+    pixelPoint, worldCoord, color = c.getDistance(img)
 
     print pixelPoint
     print worldCoord
+    print color
 
     cv2.circle(img, (int(pixelPoint[0]), int(pixelPoint[1])), 4, (0, 255, 0), -1)
 
