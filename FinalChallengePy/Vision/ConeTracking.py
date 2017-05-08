@@ -5,9 +5,10 @@ import rospy # standard ros with python package
 from sensor_msgs.msg import Image  # the rostopic message we subscribe/publish 
 from final_challenge.msg import ConeInfo
 from cv_bridge import CvBridge # package to convert rosmsg<->cv2 
-from CircleThreshold import CircleThreshold
+
 from ConeThreshold import ConeThreshold
-dsf
+from ConeCalculations import ConeCalculations
+
 import numpy as np
 
 class ConeTracking:
