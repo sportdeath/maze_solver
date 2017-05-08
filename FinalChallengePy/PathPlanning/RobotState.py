@@ -4,7 +4,7 @@ from FinalChallengePy.CarConstants import *
 
 class RobotState:
     def __init__(self, x, y, theta=None, backwards=False):
-        if not theta:
+        if theta == None:
             self.position = x
             self.orientation = y
             self.theta = GeomUtils.getAngle(self.orientation)

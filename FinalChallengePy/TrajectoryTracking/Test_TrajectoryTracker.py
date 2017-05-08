@@ -3,13 +3,11 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from ackermann_msgs.msg import AckermannDriveStamped
-from std_msgs.msg import Header
 
 from FinalChallengePy.PathPlanning.MapUtils import MapUtils
 from FinalChallengePy.PathPlanning.RobotState import RobotState
 from FinalChallengePy.PathPlanning.VisualizeLine import VisualizeLine
 from FinalChallengePy.PathPlanning.RRT import RRT
-
 from FinalChallengePy.TrajectoryTracking.TrajectoryTracker import TrajectoryTracker
 from FinalChallengePy.TrajectoryTracking.Constants import *
 
@@ -55,19 +53,7 @@ class Test_TrajectoryTracker(VisualizeLine):
         self.state.lidarToRearAxle()
 
         if self.trajectoryTracker:
-            velocity, angle = self.trajectoryTracker.getControlAngle(
-                    self.state,
-                    self.goalPointVisualizer)
-
-            header = Header()
-            header.stamp = rospy.Time.now()
-            header.frame_id = "pure_pursuit"
-
-            drivingCommand = AckermannDriveStamped()
-            drivingCommand.drive.speed = velocity
-            drivingCommand.drive.steering_angle = angle
-
-            self.commandPub.publish(drivingCommand)
+            self.trajectoryTracker.publishCommand(self.state, self.commandPub, self.goalPointVisualizer)
 
     def clickedPose(self, msg):
         # The received pose
