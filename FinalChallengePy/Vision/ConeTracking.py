@@ -12,6 +12,12 @@ class ConeTracking:
     IMAGE_HEIGHT = 376.  # pixel height
     IMAGE_WIDTH = 672.  # pixel width
 
+    HSV_MIN_ORANGE = np.array([2, 182, 133])
+    HSV_MAX_ORANGE = np.array([7, 254, 225])
+
+    HSV_MIN_GREEN = np.array([74, 73, 39])
+    HSV_MAX_GREEN = np.array([109, 185, 75]) # might need to bump the last one up to like 85
+
     def __init__(self):
         
         # create bridge to convert to and from cv2 and rosmsg
@@ -44,7 +50,11 @@ class ConeTracking:
         rospy.loginfo("Processing Image")
 
         # convert rosmsg to cv2 type
-        imageCv = self.bridge.imgmsg_to_cv2(image_msg)            
+        imageCv = self.bridge.imgmsg_to_cv2(image_msg)
+
+        redThreshold = ConeThreshold(imageCv, self.HSV_MIN_ORANGE, self.HSV_MAX_ORANGE)
+        greenThreshold = ConeThreshold(imageCv, self.HSV_MIN_GREEN, self.HSV_MAX_GREEN)
+        
         circleThreshold = CircleThreshold(imageCv)
 
         # Uncomment for debugging purposes
@@ -57,6 +67,7 @@ class ConeTracking:
         # publish rosmsg 
         # self.pubImage.publish(image_ros_msg)
 
+        # TODO: update to use red and green thresholds to get directions
         if circleThreshold.newCone():
             msg = ConeInfo()
             msg.direction = circleThreshold.getDirection()
