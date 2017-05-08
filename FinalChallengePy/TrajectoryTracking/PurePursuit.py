@@ -7,19 +7,6 @@ from FinalChallengePy.CarConstants import *
 class PurePursuit:
 
     """
-    Takes a robot state and
-    """
-    @staticmethod
-    def globalPointToLocal(state, globalPoint):
-        translatedPoint = globalPoint - state.getPosition()
-
-        # rotate into the up frame of reference
-        angle = np.arccos(state.getOrientation()[1]) \
-                * np.sign(state.getOrientation()[0])
-
-        return GeomUtils.rotateVector(translatedPoint, angle)
-
-    """
     goal point is relative to the robot's
     frame of reference
     """

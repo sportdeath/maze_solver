@@ -11,14 +11,14 @@ cameraMatrixInv = np.loadtxt(CAMERA_MATRIX_INV_FILE)
 
 class CoordinateTransformations:
     @staticmethod
-    def pixelsToWorld(pixels):
+    def pixelsToLocal(pixels):
         pixelsAffine = np.array([pixels[0], pixels[1], 1.])
         pinHoleCoordinates = scalingFactor * np.dot(cameraMatrixInv, pixelsAffine)
         worldAffine = np.dot(rotationMatrixInv, pinHoleCoordinates - translationVector)
         return np.array([worldAffine[0], worldAffine[1]])
        
     @staticmethod
-    def worldToPixels(world):
+    def localToPixels(world):
         worldAffine = np.array([world[0], world[1], 1.])
         pinHoleCoordinates = np.dot(rotationMatrix, world) + translationVector
         pixelsAffine = np.dot(cameraMatrix, pinHoleCoordinates)/scalingFactor

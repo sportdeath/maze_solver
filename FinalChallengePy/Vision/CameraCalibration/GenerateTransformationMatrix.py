@@ -56,9 +56,9 @@ class TransformationGenerator:
         from FinalChallengePy.Vision.CoordinateTransformations import CoordinateTransformations
 
         for i in xrange(2):
-            world = CoordinateTransformations.pixelsToWorld(self.pixelCoords[i])
+            world = CoordinateTransformations.pixelsToLocal(self.pixelCoords[i])
             print("World: ", world, ", expected: ", self.sources[i])
-            pixels = CoordinateTransformations.worldToPixels(self.sources[i])
+            pixels = CoordinateTransformations.localToPixels(self.sources[i])
             print("Pixels: ", pixels, ", expected: ", self.pixelCoords[i])
 
 if __name__=="__main__":

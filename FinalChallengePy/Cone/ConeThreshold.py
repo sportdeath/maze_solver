@@ -13,9 +13,6 @@ class ConeThreshold:
     ASPECT_MIN = 0.5
     ASPECT_MAX = 1
 
-    CAMERA_DIMENSIONS = (672, 376)
-    DIST_TIMES_FOCAL_LENGTH_PX = 50/0.0068
-
     def __init__(self, inputImage, thresholdMin, thresholdMax):
         self.inputImage = inputImage
         self.hsvMin = thresholdMin
