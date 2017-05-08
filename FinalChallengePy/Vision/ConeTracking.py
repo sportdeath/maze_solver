@@ -6,6 +6,8 @@ from sensor_msgs.msg import Image  # the rostopic message we subscribe/publish
 from final_challenge.msg import ConeInfo
 from cv_bridge import CvBridge # package to convert rosmsg<->cv2 
 from CircleThreshold import CircleThreshold
+from ConeThreshold import ConeThreshold
+dsf
 import numpy as np
 
 class ConeTracking:
@@ -16,7 +18,10 @@ class ConeTracking:
     HSV_MAX_ORANGE = np.array([7, 254, 225])
 
     HSV_MIN_GREEN = np.array([74, 73, 39])
-    HSV_MAX_GREEN = np.array([109, 185, 75]) # might need to bump the last one up to like 85
+    HSV_MAX_GREEN = np.array([109, 185, 85]) # might need to bump the last one up to like 85
+
+    RED_CONE_DIRECTION = 1
+    GREEN_CONE_DIRECTION = -RED_CONE_DIRECTION
 
     def __init__(self):
         
@@ -30,7 +35,6 @@ class ConeTracking:
 
         self.pubConeInfo = rospy.Publisher("/cone_info", ConeInfo, queue_size=1)
 
-        
         # subscribe to the rostopic carrying the image we are interested in
         # "camera/rgb/image_rect_color" is the topic name
         # Image is the message type
@@ -38,7 +42,7 @@ class ConeTracking:
         # recieve the message
         self.subImage = rospy.Subscriber("/zed/rgb/image_rect_color",\
                 Image, self.processImage, queue_size=1)
-        
+
         # report initalization success
         rospy.loginfo("Cone Tracking Initialized.")
 
@@ -55,8 +59,6 @@ class ConeTracking:
         redThreshold = ConeThreshold(imageCv, self.HSV_MIN_ORANGE, self.HSV_MAX_ORANGE)
         greenThreshold = ConeThreshold(imageCv, self.HSV_MIN_GREEN, self.HSV_MAX_GREEN)
         
-        circleThreshold = CircleThreshold(imageCv)
-
         # Uncomment for debugging purposes
         # outputImage = threshold.getBoundedImage()
         # outputImage = threshold.getMatchedImage()
@@ -67,10 +69,16 @@ class ConeTracking:
         # publish rosmsg 
         # self.pubImage.publish(image_ros_msg)
 
-        # TODO: update to use red and green thresholds to get directions
-        if circleThreshold.newCone():
+        if redThreshold.newCone():
             msg = ConeInfo()
-            msg.direction = circleThreshold.getDirection()
+            msg.direction = self.RED_CONE_DIRECTION
+            msg.location = circleThreshold.getWorldCoordinatesAsPoint()
+
+            self.pubConeInfo.publish(msg)
+
+        if greenThreshold.newCone():
+            msg = ConeInfo()
+            msg.direction = self.GREEN_CONE_DIRECTION
             msg.location = circleThreshold.getWorldCoordinatesAsPoint()
 
             self.pubConeInfo.publish(msg)
