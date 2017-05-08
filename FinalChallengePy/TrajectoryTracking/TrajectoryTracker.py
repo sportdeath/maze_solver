@@ -4,6 +4,7 @@ from FinalChallengePy.TrajectoryTracking.PurePursuit import PurePursuit
 from FinalChallengePy.CarConstants import *
 
 from FinalChallengePy.TrajectoryTracking.Constants import *
+from FinalChallengePy.Utils.LocalGlobalUtils import LocalGlobalUtils
 
 import rospy
 from ackermann_msgs.msg import AckermannDriveStamped
@@ -46,7 +47,7 @@ class TrajectoryTracker:
         if visualizeMethod:
             TrajectoryTracker.visualize(state, goalPointGlobal, visualizeMethod)
 
-        goalPointLocal = PurePursuit.globalPointToLocal(state, goalPointGlobal)
+        goalPointLocal = GlobalLocalUtils.globalToLocal(state, goalPointGlobal)
 
         velocity = CAR_VELOCITY
         if len(points) - self.pointIndex < NUM_TUNE_POINTS:

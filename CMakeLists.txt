@@ -50,10 +50,10 @@ catkin_python_setup()
 
 ## Generate messages in the 'msg' folder
 add_message_files(
-  DIRECTORY
-	FinalChallengePy/Vision/msg
-	FILES
-  ConeInfo.msg
+    DIRECTORY
+    FinalChallengePy/Cone
+    FILES
+    ConeInfo.msg
 )
 
 ## Generate services in the 'srv' folder
