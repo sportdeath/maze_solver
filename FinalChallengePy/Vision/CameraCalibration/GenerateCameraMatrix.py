@@ -13,25 +13,20 @@ default values:
     <image mask> defaults to ../data/left*.jpg
 '''
 
-# Python 2/3 compatibility
 from __future__ import print_function
 
 import numpy as np
 import cv2
-
-# local modules
-from common import splitfn
-import sys
-sys.path.insert(0, '../')
-from CoordinateTransformations import CoordinateTransformations
-
-# built-in modules
 import os
+import sys
+import getopt
+from glob import glob
+from common import splitfn
+
+from FinalChallengePy.Vision.Constants import *
+from FinalChallengePy.Vision.CoordinateTransformations import CoordinateTransformations
 
 if __name__ == '__main__':
-    import sys
-    import getopt
-    from glob import glob
 
     args, img_mask = getopt.getopt(sys.argv[1:], '', ['debug=', 'square_size='])
     args = dict(args)
@@ -98,49 +93,8 @@ if __name__ == '__main__':
     print("width, height = ", (w, h))
     print("pixelsPerSquare: ", pixelsPerSquare)
 
-    # undistort the image with the calibration
-    print('')
-    for i in range(len(imgs_found)):
-        img_found = imgs_found[i]
-        img = cv2.imread(img_found)
-
-        # undistort
-        img = cv2.undistort(img, camera_matrix, dist_coefs, None)
-
-        r = rvecs[i]
-        r, jacobian = cv2.Rodrigues(r)
-
-        t = tvecs[i]
-
-        Hr = np.matmul(np.matmul(camera_matrix, np.linalg.inv(r)), np.linalg.inv(camera_matrix))
-
-        C = np.matmul(np.linalg.inv(r), t)
-        translation_vector = -np.matmul(camera_matrix,C)
-        h,  w = img.shape[:2]
-        # Calculate pixels per square
-        translation_vector[0] = translation_vector[0] + (-8*pixelsPerSquare)/2.
-        translation_vector[1] = translation_vector[1] + (-5*pixelsPerSquare)/2.
-        translation_vector = translation_vector/C[2]
-        translation_vector[2] = 1/C[2]
-
-        Ht = np.identity(3)
-        Ht[:,2:] = translation_vector
-
-        H = np.matmul(Ht, Hr)
-        print(H)
-
-        transform = CoordinateTransformations(H, 0, 0)
-        img2 = transform.displayCoordinatesOnWorld(img, 2.46, 30)
-
-        img = cv2.warpPerspective(img,H,(w,h))
-        cv2.circle(img,(w/2,h/2),2,[0,0,255],thickness=2)
-        cv2.circle(img,(0,0),2,[0,0,255],thickness=2)
-
-        path, name, ext = splitfn(img_found)
-        outfile = debug_dir + name + '_undistorted.png'
-        outfile2 = debug_dir + name + '_grid.png'
-        print('Undistorted image written to: %s' % outfile)
-        cv2.imwrite(outfile, img)
-        cv2.imwrite(outfile2, img2)
+    np.savetxt(CAMERA_MATRIX_FILE, camera_matrix)
+    np.savetxt(CAMERA_MATRIX_INV_FILE, np.linalg.inv(camera_matrix))
+    print("Camera matrix written")
 
     cv2.destroyAllWindows()
