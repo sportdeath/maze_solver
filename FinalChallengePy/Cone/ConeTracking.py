@@ -18,6 +18,14 @@ class ConeTracking:
     
     referenceState = RobotState(0.,0.,0.)
 
+    # Set coordinates for setpoint control line follower
+    IMAGE_HEIGHT = 376.  # pixel height
+    IMAGE_WIDTH = 672.  # pixel width
+    M_X = 0. # start at left side of image
+    M_Y = 0.15*IMAGE_HEIGHT # start from 15% from top of image
+    M_HEIGHT = 0.85*IMAGE_HEIGHT # go until bottom of image
+    M_WIDTH = IMAGE_WIDTH # sample entire width
+
     def __init__(self):
         self.redCones = []
         self.greenCones = []
@@ -53,6 +61,11 @@ class ConeTracking:
         # convert rosmsg to cv2 type
         imageCv = self.bridge.imgmsg_to_cv2(image_msg)
 
+        # mask top and bottom of image
+        # manualMask = np.zeros(imageCv.shape, np.uint8)
+        # manualMask[self.M_Y:self.M_Y+self.M_HEIGHT, self.M_X:self.M_X+self.M_WIDTH] = imageCv[self.M_Y:self.M_Y+self.M_HEIGHT, self.M_X:self.M_X+self.M_WIDTH]
+
+        # add color thresholding
         redThreshold = ConeThreshold(imageCv, HSV_MIN_ORANGE, HSV_MAX_ORANGE)
         greenThreshold = ConeThreshold(imageCv, HSV_MIN_GREEN, HSV_MAX_GREEN)
         
@@ -68,22 +81,24 @@ class ConeTracking:
         self.pubImage.publish(image_ros_msg)
 
         if redThreshold.doesExist():
-            redCone = Cone(self.referenceState, redThreshold.getBottomCenterPoint())
-            self.updateCones(redCone, self.redCones, RED_CONE_DIRECTION)
+            redCone = Cone(redThreshold.getBottomCenterPoint())
+            if np.linalg.norm(redCone.getPosition()) < CONE_VISIBILITY_THRESHOLD:
+                self.updateCones(redCone, self.redCones, RED_CONE_DIRECTION)
 
         if greenThreshold.doesExist():
-            greenCone = Cone(self.referenceState, greenThreshold.getBottomCenterPoint())
-            self.updateCones(greenCone, self.greenCones, GREEN_CONE_DIRECTION)
+            greenCone = Cone(greenThreshold.getBottomCenterPoint())
+            if np.linalg.norm(greenCone.getPosition()) < CONE_VISIBILITY_THRESHOLD:
+                self.updateCones(greenCone, self.greenCones, GREEN_CONE_DIRECTION)
     
     def updateCones(self, cone, cones, direction):
-        if cone.isNewCone(cones):
-            msg = ConeInfo()
-            msg.direction = direction
-            worldCoordinates = cone.getPosition()
-            msg.location.x = worldCoordinates[0]
-            msg.location.y = worldCoordinates[1]
-            self.pubConeInfo.publish(msg)
-            cones.append(cone)
+        #if cone.isNewCone(cones):
+        msg = ConeInfo()
+        msg.direction = direction
+        worldCoordinates = cone.getPosition()
+        msg.location.x = worldCoordinates[0]
+        msg.location.y = worldCoordinates[1]
+        self.pubConeInfo.publish(msg)
+        # cones.append(cone)
 
 if __name__=="__main__":
     rospy.init_node('ConeTracking')

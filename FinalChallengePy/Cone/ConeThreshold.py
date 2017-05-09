@@ -12,6 +12,7 @@ http://www.pyimagesearch.com/2014/08/04/opencv-python-color-detection/
 class ConeThreshold:
     ASPECT_MIN = 0.5
     ASPECT_MAX = 1
+    AREA_MIN = 200
     exists = True
 
     def __init__(self, inputImage, thresholdMin, thresholdMax):
@@ -95,10 +96,10 @@ class ConeThreshold:
             contour = self.contours[i]
             xTop, yTop, width, height = cv2.boundingRect(contour)
             aspectRatio = width/float(height)
+            area = width * height
 
-            if (self.ASPECT_MIN < aspectRatio < self.ASPECT_MAX):
+            if (self.ASPECT_MIN < aspectRatio < self.ASPECT_MAX) and area > self.AREA_MIN:
                 self.filteredContours.append(contour)
-                area = width * height
 
                 if area  >= bestArea:
                     bestArea = area
@@ -116,23 +117,21 @@ class ConeThreshold:
 
     def getBottomCenterPoint(self):
         bottomCenterX = self.bestxTop + self.bestWidth/2
-        bottomCenterY = self.bestyTop - self.bestHeight
+        bottomCenterY = self.bestyTop + self.bestHeight
         return np.array([bottomCenterX, bottomCenterY])
 
     def getBoundedImage(self, colorText):
         boundedImage = self.getMaskedImage()
         self.filterContours()
 
-        for i in range(len(self.contours)):
-            contour = self.contours[i]
+        for i in range(len(self.filteredContours)):
+            contour = self.filteredContours[i]
             xTop, yTop, width, height = cv2.boundingRect(contour)
             aspectRatio = width/float(height)
             area = width * height
 
             if contour is self.bestContour:
                 color = [0,255,0]
-            elif np.array(contour in self.filteredContours).any():
-                color = [0,255,255]
             else:
                 color = [0,0,255]
 
@@ -154,27 +153,11 @@ class ConeThreshold:
                     color,\
                     2)
 
+            # mark the center point
+            if self.doesExist():
+                centerPoint = self.getBottomCenterPoint()
+                centerPoint = (centerPoint[0], centerPoint[1])
+                cv2.circle(boundedImage,centerPoint,2,[0,0,255],thickness=2)
+
         return boundedImage
 
-
-# Testing code
-if __name__=="__main__":
-    HSV_MIN_ORANGE = np.array([2, 182, 133])
-    HSV_MAX_ORANGE = np.array([7, 254, 225])
-
-    HSV_MIN_GREEN = np.array([74, 73, 39])
-    HSV_MAX_GREEN = np.array([109, 185, 85]) # might need to bump the last one up to like 85
-
-    img = cv2.imread("/home/katy/racecar-ws/src/final_challenge/FinalChallengePy/Vision/images/redgreen8.png")
-
-    redThreshold = ConeThreshold(img, HSV_MIN_ORANGE, HSV_MAX_ORANGE)
-    greenThreshold = ConeThreshold(img, HSV_MIN_GREEN, HSV_MAX_GREEN)
-
-    cv2.imshow("original", img)
-
-    combined = cv2.add(redThreshold.getBoundedImage("red"), greenThreshold.getBoundedImage("green"))
-    cv2.imshow("masked", combined)
-
-    cv2.waitKey(0)
-
-    cv2.destroyAllWindows()

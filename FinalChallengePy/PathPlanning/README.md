@@ -1,3 +1,12 @@
+Prerequisites:
+
+http://libspatialindex.github.io/index.html
+
+    ./configure --prefix=/home/racecar/racecar-ws/devel
+    make
+    make install
+    sudo pip install Rtree
+
 # RRT Algorithm
 
 <pre>
