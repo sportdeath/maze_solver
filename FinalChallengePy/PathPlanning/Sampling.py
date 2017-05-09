@@ -5,8 +5,8 @@ from FinalChallengePy.PathPlanning.RobotState import RobotState
 class Sampling:
     @staticmethod
     def getGaussianState(state, positionStdDev, angleStdDev, backwards=False):
-        x, y = np.random.normal(loc=state.getPosition, scale=self.positionStdDev)
-        theta = np.random.normal(loc=state.getTheta(), scale=self.angleStdDev))
+        x, y = np.random.normal(loc=state.getPosition(), scale=positionStdDev)
+        theta = np.random.normal(loc=state.getTheta(), scale=angleStdDev)
         
         if backwards:
             backwards = bool(np.random.randomint(2))

@@ -3,6 +3,7 @@ import numpy as np
 from rtree import index
 
 from FinalChallengePy.PathPlanning.Steer import Steer
+from FinalChallengePy.PathPlanning.Sampling import Sampling
 from FinalChallengePy.PathPlanning.RobotState import RobotState
 from FinalChallengePy.PathPlanning.MapUtils import MapUtils
 from FinalChallengePy.PathPlanning.Constants import *
@@ -21,8 +22,8 @@ class RRT:
             numOptimizations = DEFAULT_NUM_OPTIMIZATIONS, 
             verbose = False,
             gaussianProbability = 0.,
-            positionStdDev = 4.
-            angleStdDev = 0.8
+            positionStdDev = 0.5,
+            angleStdDev = 0.5
             ):
         self.mapMsg = mapMsg
         if rangeMethod is None:
@@ -52,7 +53,8 @@ class RRT:
         y = state.getPosition()[1]
         return [tree[i] for i in nnTree.nearest((x, y, x, y), k)]
 
-    def computePath(self, init, goal, backwards=False, fakeWall = None, multipleGoals = False):
+    def computePath(self, init, goal, backwards=False, fakeWall = None, multipleGoals = False, sampleStates = []):
+        print("yo?")
         tree = [RRTNode(init, 0, None)]
         nnTree = index.Index()
         RRT.nnTreeInsertLastElement(nnTree, tree)
@@ -82,7 +84,14 @@ class RRT:
         while self.maxIterations < 0 or i < self.maxIterations:
             if self.verbose:
                 print(i)
-            newState, goal, goalIndex = self.updateTree(tree,nnTree,newState,init,goalStates,backwards, fakeWall = fakeWall)
+            newState, goal, goalIndex = self.updateTree(
+                    tree,
+                    nnTree,
+                    newState,
+                    goalStates,
+                    backwards, 
+                    fakeWall = fakeWall, 
+                    sampleStates = sampleStates)
             if goal:
                 if tree[-1].cost < bestCost:
                     bestGoalIndex = goalIndex
@@ -96,13 +105,13 @@ class RRT:
             if self.verbose:
                 print("Found goal, optimizing")
             self.path = RRT.treeToPath(tree, bestGoal)
-            self.optimize([init]+goalStates, backwards, fakeWall)
+            self.optimize(sampleStates, backwards, fakeWall)
             return bestGoalIndex, tree
 
         self.path = [(init.getPosition(), False)]
         return -1, tree
 
-    def updateTree(self, tree, nnTree, newState, init, goalStates, backwards, fakeWall = None):
+    def updateTree(self, tree, nnTree, newState, goalStates, backwards, fakeWall = None,  sampleStates = []):
         # Check whether last state we added 
         # has steerable path to goal
         if newState:
@@ -120,7 +129,7 @@ class RRT:
                     return False, True, goalIndex
             newState = False
 
-        randomState = self.getRandomState([init]+goals, backwards)
+        randomState = self.getRandomState(sampleStates, backwards)
 
         minNode = None
         minCost = np.inf
@@ -145,7 +154,7 @@ class RRT:
     def getRandomState(self, states, backwards):
         choice = np.random.rand()
         if choice < self.gaussianProbability:
-            # Choose state from either init or goal
+            # Choose state
             index = np.random.randint(len(states))
             state = states[index]
             return Sampling.getGaussianState(state, self.positionStdDev, self.angleStdDev)

@@ -6,6 +6,9 @@ import range_libc
 from nav_msgs.srv import GetMap
 import tf
 
+from std_msgs.msg import Header
+from geometry_msgs.msg import PoseArray, Pose, Quaternion
+
 class MapUtils:
 
     @staticmethod
@@ -56,6 +59,11 @@ class MapUtils:
         return yaw
 
     @staticmethod
+    def angleToQuaternion(angle):
+        """Convert an angle in radians into a quaternion _message_."""
+        return Quaternion(*tf.transformations.quaternion_from_euler(0, 0, angle))
+
+    @staticmethod
     def mapCellToMeters(mapCell, mapMsg):
         y = -float(mapCell[0]) * mapMsg.info.resolution + mapMsg.info.origin.position.y
         x = -float(mapCell[1]) * mapMsg.info.resolution + mapMsg.info.origin.position.x
@@ -85,3 +93,21 @@ class MapUtils:
             return distanceToObstacle
 
         return rangeMethod
+
+    @staticmethod
+    def publishStates(states, publisher):
+        poseArray = PoseArray()
+
+        header = Header()
+        header.stamp = rospy.Time.now()
+        header.frame_id = "/map"
+        poseArray.header = header
+
+        for state in states:
+            pose = Pose()
+            pose.position.x = state.getPosition()[0]
+            pose.position.y = state.getPosition()[1]
+            pose.orientation = MapUtils.angleToQuaternion(state.getTheta() - np.pi/2.)
+            poseArray.poses.append(pose)
+
+        publisher.publish(poseArray)

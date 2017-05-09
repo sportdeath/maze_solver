@@ -3,7 +3,7 @@
 import numpy as np
 
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PoseArray
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PointStamped
 
@@ -11,12 +11,13 @@ from FinalChallengePy.PathPlanning.MapUtils import MapUtils
 from FinalChallengePy.PathPlanning.VisualizeLine import VisualizeLine
 from FinalChallengePy.PathPlanning.FakeWall import FakeWall
 from FinalChallengePy.PathPlanning.Steer import Steer 
+from FinalChallengePy.PathPlanning.Sampling import Sampling
 
 from FinalChallengePy.PathPlanning.RobotState import RobotState
 
-class Test_FakeWall(VisualizeLine):
+class Test_Sampling(VisualizeLine):
     def __init__(self):
-        VisualizeLine.__init__(self,"Test_FakeWall", numPublishers = 3)
+        VisualizeLine.__init__(self,"Test_Sampling", numPublishers = 3)
 
         self.mapMsg = MapUtils.getMap()
         self.rangeLib = MapUtils.getRangeLib(self.mapMsg)
@@ -27,19 +28,10 @@ class Test_FakeWall(VisualizeLine):
 
         self.direction = 1.
 
-        self.circleCenter = np.array([-11.9,0.])
-        self.radius = 1.
-
         self.clickSub = rospy.Subscriber(
                 "/move_base_simple/goal", 
                 PoseStamped, 
                 self.clickedPose, 
-                queue_size=1)
-        
-        self.clickSub = rospy.Subscriber(
-                "/initialpose", 
-                PoseWithCovarianceStamped, 
-                self.clickedCircle, 
                 queue_size=1)
 
         self.clickSub = rospy.Subscriber(
@@ -48,18 +40,14 @@ class Test_FakeWall(VisualizeLine):
                 self.clickedPoint, 
                 queue_size=1)
 
+        self.samplePub  = rospy.Publisher(
+                "/samples", 
+                PoseArray, 
+                queue_size = 1)
+
         for i in xrange(3):
             rospy.sleep(0.1)
             self.makeFakeWall()
-
-    def clickedCircle(self, msg):
-        # The received pose
-        x = msg.pose.pose.position.x
-        y = msg.pose.pose.position.y
-
-        self.circleCenter = np.array([x, y])
-
-        self.makeFakeWall()
 
     def clickedPoint(self, msg):
         x = msg.point.x
@@ -83,25 +71,19 @@ class Test_FakeWall(VisualizeLine):
         fakeWall = FakeWall(self.point, self.normal, self.direction, self.rangeMethod)
         linePoints = fakeWall.getLine()
 
-        intersectionPoints = Steer.intersectCirclePoints(linePoints, self.circleCenter, self.radius)
+        sampleState = fakeWall.getSampleCenter()
+        states = [sampleState]
 
-        intersectionLineList = []
-        for intersectionPoint in intersectionPoints:
-            intersectionLineList.append(self.circleCenter)
-            intersectionLineList.append(intersectionPoint)
-
-        numCirclePoints = 100
-        circlePoints = []
-        for i in xrange(numCirclePoints):
-            angle = i*2*np.pi/float(numCirclePoints)
-            point = self.circleCenter + self.radius * np.array([np.cos(angle), np.sin(angle)])
-            circlePoints.append(point)
+        for i in xrange(20):
+            states.append(Sampling.getGaussianState(
+                sampleState, 
+                0.5, 
+                0.5))
 
         self.visualize(linePoints, (1., 0., 0.), publisherIndex=0)
-        self.visualize(circlePoints, (0., 0., 1.), publisherIndex=1)
-        self.visualize(intersectionLineList, (0., 1., 0.), publisherIndex=2, lineList=True)
+        MapUtils.publishStates(states, self.samplePub)
 
 if __name__=="__main__":
-    rospy.init_node("Test_FakeWall")
-    test_fakewall = Test_FakeWall()
+    rospy.init_node("Test_Sampling")
+    test_sampling = Test_Sampling()
     rospy.spin()

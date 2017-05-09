@@ -38,7 +38,9 @@ class RSS(VisualizeLine):
                 self.mapMsg, 
                 maxIterations = RSS_MAX_ITERATIONS, 
                 numOptimizations = RSS_NUM_OPTIMIZATIONS, 
-                rangeMethod = self.rangeMethod)
+                rangeMethod = self.rangeMethod,
+                gaussianProbability = 0.8
+                )
 
         self.state = RobotState(-1,0,3.14)
 
@@ -147,22 +149,21 @@ class RSS(VisualizeLine):
     point in the specified direction
     '''
     def planAroundPoint(self, point, direction):
-        fakeWall = FakeWall.makeFakeWall(
+        fakeWall = FakeWall(
                 point, 
                 self.state.getOrientation(), 
                 direction, 
                 self.rangeMethod
                 )
-        self.visualizeFakeWall(fakeWall, direction)
+        self.visualizeFakeWall(fakeWall.getLine(), direction)
 
         # Find the first section which intersects the fake wall path 
         badSteerIndex = -1
         badSteer = None
         for index, steer in enumerate(self.steers):
-            if steer.intersects(fakeWall):
+            if steer.intersects(fakeWall.getLine()):
                 badSteerIndex = index
                 badSteer = steer
-                # self.visualize(steer.getPoints(), (1., 0., 0.), publisherIndex=3)
                 break
 
         # If there is no intersection don't do anything!
@@ -177,11 +178,14 @@ class RSS(VisualizeLine):
 
         goalStates = [self.steers[i].getGoalState() for i in xrange(badSteerIndex, len(self.steers))]
 
-        bestGoal, _ = self.RRT.computePath(
+        bestGoal, tree = self.RRT.computePath(
                 self.state, 
                 goalStates, 
-                fakeWall = fakeWall, 
+                fakeWall = fakeWall.getBufferedLine(), 
+                sampleStates = [fakeWall.getSampleCenter()],
                 multipleGoals = True)
+
+        self.visualize(self.RRT.treeToLineList(tree),(0.,0.,0.7),publisherIndex=3,lineList=True)
 
         if bestGoal < 0:
             rospy.loginfo("No path found")
