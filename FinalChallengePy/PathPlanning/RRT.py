@@ -23,8 +23,11 @@ class RRT:
             numOptimizations = DEFAULT_NUM_OPTIMIZATIONS, 
             verbose = False,
             gaussianProbability = 0.,
-            positionStdDev = 0.5,
-            angleStdDev = 0.5
+            gaussianPositionStdDev = 0.5,
+            gaussianAngleStdDev = 0.5,
+            miniSteerProbability = 0,
+            miniSteerAngleStdDev = 0.1,
+            miniSteerLengthStdDev = 0.1
             ):
         self.mapMsg = mapMsg
         if rangeMethod is None:
@@ -37,8 +40,11 @@ class RRT:
         self.numOptimizations = numOptimizations
         self.verbose = verbose
         self.gaussianProbability = gaussianProbability
-        self.positionStdDev = positionStdDev
-        self.angleStdDev = angleStdDev
+        self.gaussianPositionStdDev = gaussianPositionStdDev
+        self.gaussianAngleStdDev = gaussianAngleStdDev
+        self.miniSteerProbability = miniSteerProbability
+        self.miniSteerAngleStdDev = miniSteerAngleStdDev
+        self.miniSteerLengthStdDev = miniSteerLengthStdDev
 
     @staticmethod
     def nnTreeInsertLastElement(nnTree, tree):
@@ -86,7 +92,8 @@ class RRT:
 
         while self.maxIterations < 0 or i < self.maxIterations:
             if self.verbose:
-                print(i)
+                if i % 100 == 0:
+                    print i, "/", self.maxIterations
             newState, goal, goalIndex = self.updateTree(
                     tree,
                     nnTree,
@@ -107,9 +114,9 @@ class RRT:
 
         if bestGoal:
             if self.verbose:
-                print("Found goal, optimizing")
+                print("Found goal", bestGoalIndex)
             self.path = RRT.treeToPath(tree, bestGoal)
-            self.optimize(sampleStates, backwards, fakeWalls)
+            # self.optimize(sampleStates, backwards, fakeWalls)
             return bestGoalIndex, tree
 
         self.path = [(init.getPosition(), False)]
@@ -133,7 +140,7 @@ class RRT:
                     return False, True, goalIndex
             newState = False
 
-        randomState = self.getRandomState(sampleStates, backwards)
+        randomState = self.getRandomState(sampleStates, tree, nnTree, backwards)
 
         minNode = None
         minCost = np.inf
@@ -155,12 +162,43 @@ class RRT:
 
         return newState, False, -1
 
-    def getRandomState(self, states, backwards):
-        if len(states) > 0 and np.random.rand() < self.gaussianProbability:
+    def getRandomState(self, sampleStates, tree, nnTree, backwards):
+
+        random = np.random.rand()
+
+        if random < self.gaussianProbability:
+            choice = 1
+        elif random < self.gaussianProbability + self.miniSteerProbability:
+            choice = 2
+        else:
+            choice = 0
+
+        if choice == 2:
+            # Generate a random point
+            randomState = Sampling.getUniformState(self.unoccupiedPoints)
+
+            # find k nearest neighbors
+            nns = RRT.getKNearest(randomState, nnTree, tree, K)
+
+            # choose one randomly
+            index = np.random.randint(len(nns))
+            nnState = nns[index].state
+
+            # generate mini state from that point
+            return Sampling.getMiniState(
+                    nnState, 
+                    self.miniSteerAngleStdDev, 
+                    self.miniSteerLengthStdDev, 
+                    backwards)
+
+        elif choice == 1:
             # Choose state
-            index = np.random.randint(len(states))
+            index = np.random.randint(len(sampleStates))
             state = states[index]
-            return Sampling.getGaussianState(state, self.positionStdDev, self.angleStdDev)
+
+            # draw from Gaussian around it
+            return Sampling.getGaussianState(state, self.gaussianPositionStdDev, self.gaussianAngleStdDev)
+
         else:
             return Sampling.getUniformState(self.unoccupiedPoints, backwards)
 
@@ -206,6 +244,16 @@ class RRT:
                     l.append(points[i])
 
         return (forwardList, backwardList)
+
+    def reverse(self):
+        for i in xrange(len(self.path) - 1):
+            self.path[i].state = RobotState(
+                    self.path[i].state.getPosition()[0],
+                    self.path[i].state.getPosition()[1],
+                    self.path[i].state.getTheta(),
+                    not self.path[i+1].state.isBackwards())
+
+        self.path.reverse()
 
     def getPath(self):
         return self.path
