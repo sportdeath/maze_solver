@@ -42,6 +42,7 @@ class RSS(VisualizeLine):
         self.state = RobotState(-1,0,3.14)
 
         self.drive = True
+        self.gotLocalizationData = False
 
         # Load the points from file
         self.steers = pickle.load(open(BIG_PATH_FILE, 'rb'))
@@ -108,7 +109,30 @@ class RSS(VisualizeLine):
         # Move state backwards
         self.state.lidarToRearAxle()
 
-        if self.trajectoryTracker and self.drive:
+        if not self.gotLocalizationData:
+            goalStates = [self.steers[i].getGoalState() for i in xrange(len(self.steers))]
+
+            bestGoal, _ = self.RRT.computePath(
+                    self.state, 
+                    goalStates,
+                    multipleGoals = True)
+
+            if bestGoal < 0:
+                print("No path found")
+                return
+
+            newSteers = self.RRT.getSteers()
+
+            # Replace the path
+            self.steers[0:bestGoal+1] = newSteers
+
+            # redo the trajectory tracker
+            path = self.steersToPath(self.steers)
+            self.trajectoryTracker = TrajectoryTracker(path)
+
+            self.gotLocalizationData = True
+
+        if self.gotLocalizationData and self.drive:
             self.trajectoryTracker.publishCommand(self.state, self.commandPub, self.goalPointVisualizer)
 
     '''

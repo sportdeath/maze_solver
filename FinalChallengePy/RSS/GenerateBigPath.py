@@ -17,7 +17,7 @@ if __name__=="__main__":
     rospy.init_node("GenerateBigPath")
 
     mapMsg = MapUtils.getMap()
-    RRT = RRT(mapMsg, maxIterations=5000, numOptimizations=10000, verbose=True)
+    RRT = RRT(mapMsg, maxIterations=5000, numOptimizations=1000, verbose=True)
 
     initState = RobotState(-1,0,3.14)
     goalState = RobotState(2.15,2.38,-1.57)
