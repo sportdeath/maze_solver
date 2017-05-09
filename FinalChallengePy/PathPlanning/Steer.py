@@ -21,8 +21,6 @@ class Steer:
             init, goal=goal, init
             self.backwards = True
 
-        self.rangeMethod = rangeMethod
-
         positionDifference = goal.getPosition() - init.getPosition()
 
         if np.dot(positionDifference,positionDifference) == 0:
@@ -34,28 +32,47 @@ class Steer:
                     positionDifference, 
                     init.getOrientation()))
 
-        # Compute the center of the circle tangent
-        # to the init state
-        initCenterNorm = self.initSide * GeomUtils.getPerpendicular(init.getOrientation())
-        self.initCircleCenter = init.getPosition() + (initCenterNorm * MIN_RADIUS)
-
-        # Check for steer-ability:
-        if np.linalg.norm(goal.getPosition() - self.initCircleCenter) < MIN_RADIUS:
-            # if the goal is within the radius
-            # around the start, then we cannot
-            # steer to it
-            return
-
         # Which way do we turn at the end?
         self.goalSide = GeomUtils.sign(
                 np.cross(
                     goal.getOrientation(), 
                     positionDifference))
 
+        # Try to turn at this side
+        initNorm, goalTangentNorm, badSTurn = self.computeAngles(init, goal)
+
+        if badSTurn:
+            return
+
+        # If we loopty-loop swap
+        if self.initAngle > np.pi*3./2.:
+            self.initSide = -self.initSide
+            initNorm, goalTangentNorm, badSTurn = self.computeAngles(init, goal)
+        elif self.goalAngle > np.pi*3./2.:
+            self.goalSide = -self.goalSide
+            initNorm, goalTangentNorm, badSTurn = self.computeAngles(init, goal)
+
+        if badSTurn:
+            return
+
+        # Compute the starting angle of the turn
+        self.initStartAngle = GeomUtils.getAngle(initNorm)
+        self.goalStartAngle = GeomUtils.getAngle(goalTangentNorm)
+
+        # Use ray marching with robot model to check for collisions
+        self.exists = True
+        self.steerable = self.isCollisionFree(rangeMethod)
+
+    @staticmethod
+    def getCircleCenter(state, side):
         # Compute the center of the circle tangent
-        # to the goal state
-        goalCenterNorm = self.goalSide * GeomUtils.getPerpendicular(goal.getOrientation())
-        self.goalCircleCenter = goal.getPosition() + (goalCenterNorm * MIN_RADIUS)
+        # to the init state
+        centerNorm = side * GeomUtils.getPerpendicular(state.getOrientation())
+        return state.getPosition() + (centerNorm * MIN_RADIUS)
+
+    def computeAngles(self, init, goal):
+        self.initCircleCenter = Steer.getCircleCenter(init, self.initSide)
+        self.goalCircleCenter = Steer.getCircleCenter(goal, self.goalSide)
 
         # Compute the norm that  points from the
         # center of the init circle to the center
@@ -75,7 +92,7 @@ class Steer:
         else:
             # If not, we are doing an S-Turn
             if circleDistance < 2 * MIN_RADIUS:
-                return
+                return (None, None, True)
 
             # This is the angle relative to the circle norm
             # that the tangent point is at.
@@ -109,13 +126,8 @@ class Steer:
                 goalNorm, 
                 self.goalSide)
 
-        # Compute the starting angle of the turn
-        self.initStartAngle = GeomUtils.getAngle(initNorm)
-        self.goalStartAngle = GeomUtils.getAngle(goalTangentNorm)
+        return (initNorm, goalTangentNorm, False)
 
-        # Use ray marching with robot model to check for collisions
-        self.exists = True
-        self.steerable = self.isCollisionFree()
 
     def getPoints(self, oriented=False, goalExtension=0.):
         points = []
@@ -171,6 +183,10 @@ class Steer:
             axle = MIN_RADIUS * np.array([np.sin(angle), np.cos(angle)])
             points.append(axle + center)
             angleOffset += ANGLE_SPACING
+        angleOffset = totalAngle
+        angle = (direction * angleOffset) + startAngle
+        axle = MIN_RADIUS * np.array([np.sin(angle), np.cos(angle)])
+        points.append(axle + center)
 
         return points
 
@@ -184,6 +200,10 @@ class Steer:
             axle = np.array([np.sin(angle), np.cos(angle)])
             pointsAndNorms.append((MIN_RADIUS * axle + center, GeomUtils.getPerpendicular(axle)))
             angleOffset += ANGLE_SPACING
+        angleOffset = totalAngle
+        angle = (direction * angleOffset) + startAngle
+        axle = np.array([np.sin(angle), np.cos(angle)])
+        pointsAndNorms.append((MIN_RADIUS * axle + center, GeomUtils.getPerpendicular(axle)))
 
         return pointsAndNorms
 
@@ -198,11 +218,120 @@ class Steer:
 
         return points
 
-    def isSteerable(self):
+    @staticmethod
+    def intersectCirclePoints(line, center, radius):
+        lineDifference = line[1] - line[0]
+        circleDifference = line[0] - center
+
+        a = np.dot(lineDifference, lineDifference)
+        b = 2.*np.dot(circleDifference, lineDifference)
+        c = np.dot(circleDifference, circleDifference) - \
+                radius * radius
+
+        innerRoot = b*b - 4.*a*c
+        if innerRoot < 0:
+            return []
+
+        denominator = 2.*a
+
+        root = np.sqrt(innerRoot)/denominator
+        constant = -b/denominator
+
+        ts = [constant + root, constant - root]
+
+        points = []
+        for t in ts:
+            if 0 <= t <= 1:
+                point = t * lineDifference + line[0]
+                points.append(point)
+
+        return points
+
+    @staticmethod
+    def intersectsCircle(
+            line, 
+            center, 
+            radius, 
+            startAngle, 
+            totalAngle, 
+            direction):
+        points = Steer.intersectCirclePoints(line, center, radius)
+
+        for point in points:
+            relative = point - center
+            norm = relative/np.linalg.norm(relative)
+            angle = GeomUtils.getAngle(norm)
+
+            relativeAngle = np.mod(direction * (angle - startAngle), 2.*np.pi)
+            if relativeAngle < totalAngle:
+                return True
+            
+        return False
+
+    @staticmethod
+    def intersectsLine(line0, line1):
+        difference0 = line0[1] - line0[0]
+        difference1 = line1[1] - line1[0]
+
+        startDifference = line1[0] - line0[0]
+
+        denominator = np.cross(difference0, difference1)
+        numerator0 = np.cross(startDifference, difference1)
+
+        if denominator == 0:
+            if numerator0 == 0:
+                return True
+            else:
+                return False
+
+        numerator1 = np.cross(startDifference, difference0)
+
+        t0 = numerator0/denominator
+        t1 = numerator1/denominator
+
+        return 0 <= t0 <= 1 and 0 <= t1 <= 1
+
+    # line is a start and end point
+    # like whats generated by Fake Wall
+    def intersects(self, line):
+        # Check intersection with start and end circles
+        intersectsLine = Steer.intersectsLine(line, (self.initTangentPoint, self.goalTangentPoint))
+
+        if intersectsLine:
+            return True
+
+        intersectsInit = Steer.intersectsCircle(
+                line,
+                self.initCircleCenter,
+                MIN_RADIUS,
+                self.initStartAngle,
+                self.initAngle,
+                self.initSide)
+
+        if intersectsInit:
+            return True
+
+        intersectsGoal = Steer.intersectsCircle(
+                line,
+                self.goalCircleCenter,
+                MIN_RADIUS,
+                self.goalStartAngle,
+                self.goalAngle,
+                self.goalSide)
+
+        if intersectsGoal:
+            return True
+        
+        return False
+
+    def isSteerable(self, fakeWall = None):
         # Not steerable the goal point
         # is inside the intial point's circle
         # or if there are collisions
-        return self.steerable
+        if fakeWall is not None:
+            return self.steerable and (not self.intersects(fakeWall))
+        else:
+            return self.steerable
 
     def getLength(self):
         length = 0
@@ -211,7 +340,7 @@ class Steer:
         length += MIN_RADIUS * self.goalAngle
         return length
 
-    def testCollisions(self, center, width, length, norm):
+    def testCollisions(self, center, width, length, norm, rangeMethod):
         verticalOffset = -norm * CAR_REAR_LENGTH
 
         horizontalOffset = GeomUtils.getPerpendicular(norm) * width/2.
@@ -222,13 +351,16 @@ class Steer:
         for side in [-1., 1.]:
             backWheel = (side * horizontalOffset) + verticalOffset + center
         
-            distanceToObstacle = self.rangeMethod(backWheel, angle)
+            distanceToObstacle = rangeMethod(backWheel, angle)
             if distanceToObstacle < minLength:
                 return False
 
         return True
 
-    def isCollisionFree(self):
+    def getGoalState(self):
+        return self.goal
+
+    def isCollisionFree(self, rangeMethod):
         initPointsAndNorms = Steer.getPointsAndNormsOnCircle(
                 self.initCircleCenter,
                 self.initStartAngle,
@@ -246,7 +378,8 @@ class Steer:
                     point,
                     CAR_WIDTH + CIRCLE_WIDTH_ADJUSTMENT,
                     0.,
-                    norm)
+                    norm,
+                    rangeMethod)
             if not isFree:
                 return False
 
@@ -257,4 +390,5 @@ class Steer:
                 self.initTangentPoint,
                 CAR_WIDTH,
                 self.lineLength,
-                self.lineNorm)
+                self.lineNorm,
+                rangeMethod)

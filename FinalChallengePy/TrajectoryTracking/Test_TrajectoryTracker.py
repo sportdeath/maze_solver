@@ -72,7 +72,7 @@ class Test_TrajectoryTracker(VisualizeLine):
         rospy.loginfo("Path planning complete")
 
         # follow the path to that tree
-        self.trajectoryTracker = TrajectoryTracker(self.RRT.getPaths(True,LOOK_AHEAD_DISTANCE))
+        self.trajectoryTracker = TrajectoryTracker(self.RRT.getPoints(self.RRT.getPath(),True,LOOK_AHEAD_DISTANCE))
 
 if __name__=="__main__":
     rospy.init_node("Test_TrajectoryTracker")

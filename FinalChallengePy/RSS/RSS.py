@@ -3,6 +3,9 @@
 import numpy as np
 
 import rospy
+
+import pickle
+
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import PoseStamped
 from ackermann_msgs.msg import AckermannDriveStamped
@@ -15,6 +18,7 @@ from FinalChallengePy.PathPlanning.MapUtils import MapUtils
 from FinalChallengePy.PathPlanning.RobotState import RobotState
 from FinalChallengePy.PathPlanning.VisualizeLine import VisualizeLine
 from FinalChallengePy.PathPlanning.RRT import RRT
+from FinalChallengePy.PathPlanning.FakeWall import FakeWall
 
 from FinalChallengePy.RSS.Constants import *
 from FinalChallengePy.TrajectoryTracking.TrajectoryTracker import TrajectoryTracker
@@ -27,11 +31,22 @@ class RSS(VisualizeLine):
         VisualizeLine.__init__(self,"RSS",numPublishers=4)
 
         self.mapMsg = MapUtils.getMap()
-        self.RRT = RRT(self.mapMsg)
+        self.rangeLib = MapUtils.getRangeLib(self.mapMsg)
+        self.rangeMethod = MapUtils.getRangeMethod(self.rangeLib, self.mapMsg)
+        self.RRT = RRT(
+                self.mapMsg, 
+                maxIterations = RSS_MAX_ITERATIONS, 
+                numOptimizations = RSS_NUM_OPTIMIZATIONS, 
+                rangeMethod = self.rangeMethod)
+
+        self.state = RobotState(-1,0,3.14)
+
+        self.drive = True
 
         # Load the points from file
-        self.points = list(np.loadtxt(BIG_PATH_FILE))
-        self.trajectoryTracker = None
+        self.steers = pickle.load(open(BIG_PATH_FILE, 'rb'))
+        path = RSS.steersToPath(self.steers)
+        self.trajectoryTracker = TrajectoryTracker(path)
 
         self.commandPub = rospy.Publisher(
                 "/vesc/high_level/ackermann_cmd_mux/input/nav_0",
@@ -56,54 +71,28 @@ class RSS(VisualizeLine):
                 self.gotConeData, 
                 queue_size = 1)
 
-        for i in xrange(2):
-            self.conePublishers = rospy.Publisher(
-                    "/cone_visualizer"+str(i),
-                    Marker,
-                    queue_size=1)
-
         for i in xrange(10):
-            self.visualizePoints()
+            self.visualizePoints(path[0][0])
             rospy.sleep(0.1)
-    
-    def visualizeCones(self, cones, publisher, color):
-        header = Header()
-        header.stamp = rospy.Time.now()
-        header.frame_id = "/base_link"
 
-        cone = Marker()
-        cone.type = Marker.CUBE
-        cone.action = Marker.ADD
-        cone.header = header
-        cone.scale.x = 0.1
-        cone.scale.y = 0.1
-        cone.scale.z = 0.1
-        cone.pose.orientation.w = 1.
-        cone.color.a = 1.
-        cone.color.r = color[0]
-        cone.color.g = color[1]
-        cone.color.b = color[2]
+    def visualizeFakeWall(self, fakeWall, direction):
+        if direction == RED_CONE_DIRECTION:
+            color = (1., 0., 0.)
+        else:
+            color = (0., 1., 0.)
+        self.visualize(fakeWall, color, publisherIndex=2)
 
-        for c in cones:
-            p = Point()
-            p.x = c.getPosition()[0]
-            p.y = c.getPosition()[1]
-            p.z = 0.0001
-            cone.points.append(p)
-
-        publisher.publish(cone)
+    def clickedPoint(self, msg):
+        x = msg.point.x
+        y = msg.point.y
+        point = np.array([x, y])
+        self.planAroundPoint(point, 1)
 
     def gotConeData(self, msg):
         x = msg.location.x
         y = msg.location.y
         point = np.array([x, y])
         direction = msg.direction
-        if direction == RED_CONE_DIRECTION:
-            self.redCones.append(point)
-        else:
-            self.greenCones.append(point)
-        self.visualizeCones(self.redCones, self.conePublishers[0], (1.,0.,0.))
-        self.visualizeCones(self.greenCones, self.conePublishers[1], (0.,1.,0.))
         self.planAroundPoint(point, direction)
 
     def goalPointVisualizer(self, points):
@@ -119,95 +108,76 @@ class RSS(VisualizeLine):
         # Move state backwards
         self.state.lidarToRearAxle()
 
-        if self.trajectoryTracker:
+        if self.trajectoryTracker and self.drive:
             self.trajectoryTracker.publishCommand(self.state, self.commandPub, self.goalPointVisualizer)
-        else:
-            # determine start state
-            goalPosition = self.points[0]
-            goalOrientation = self.points[1] - self.points[0]
-            goalOrientation /= np.linalg.norm(goalOrientation)
-            goalState = RobotState(goalPosition, goalOrientation)
-
-            # compute a path to it
-            self.RRT.computePath(self.state, goalState, backwards=True)
-            pathsToStart = self.RRT.getPaths(True, LOOK_AHEAD_DISTANCE) 
-            paths = pathsToStart + [(self.points, False)]
-
-            # Visualize
-            (forwardPoints, backwardsPoints) = self.RRT.getLineLists()
-            self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=2,lineList=True)
-            self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=3,lineList=True)
-            
-            # Go!
-            self.trajectoryTracker = TrajectoryTracker(paths)
-
-    def clickedPoint(self, msg):
-        x = msg.point.x
-        y = msg.point.y
-        point = np.array([x, y])
-        self.planAroundPoint(point, -1)
 
     '''
     recalculate the path to circle around
     point in the specified direction
     '''
     def planAroundPoint(self, point, direction):
-        # find closest point on path
-        closestDistSquared = np.inf
-        closestIndex = 0
-        for i, p in enumerate(self.points):
-            difference = p - point
-            distSquared = np.dot(difference, difference)
-            if distSquared < closestDistSquared:
-                closestDistSquared = distSquared
-                closestIndex = i
+        fakeWall = FakeWall.makeFakeWall(
+                point, 
+                self.state.getOrientation(), 
+                direction, 
+                self.rangeMethod
+                )
+        self.visualizeFakeWall(fakeWall, direction)
 
-        if closestIndex < len(self.points) - 1:
-            middleOrientation = self.points[closestIndex + 1] - self.points[closestIndex]
-        else:
-            middleOrientation = self.points[closestIndex] - self.points[closestIndex - 1]
-        middleOrientation = middleOrientation/np.linalg.norm(middleOrientation)
+        # Find the first section which intersects the fake wall path 
+        badSteerIndex = -1
+        badSteer = None
+        for index, steer in enumerate(self.steers):
+            if steer.intersects(fakeWall):
+                badSteerIndex = index
+                badSteer = steer
+                # self.visualize(steer.getPoints(), (1., 0., 0.), publisherIndex=3)
+                break
 
-        perpendicular = GeomUtils.getPerpendicular(middleOrientation)
-        middlePosition = point + direction * RSS_OFFSET * perpendicular
+        # If there is no intersection don't do anything!
+        if badSteerIndex < 0:
+            return
 
-        vizPoints = [self.points[closestIndex], middlePosition]
-        self.visualize(vizPoints,(0.,0.,1.),publisherIndex=1)
+        # Otherwise we must compute a new path
+        # Stop driving!
+        self.drive = False
 
-        middleState = RobotState(middlePosition, middleOrientation)
+        goalStates = [self.steers[i].getGoalState() for i in xrange(badSteerIndex, len(self.steers))]
 
-        # Get the points we leave and return to the path
-        initIndex = max(0, closestIndex - RSS_NUM_POINTS)
-        goalIndex = min(len(self.points) - 1, closestIndex + RSS_NUM_POINTS)
+        bestGoal, _ = self.RRT.computePath(
+                self.state, 
+                goalStates, 
+                fakeWall = fakeWall, 
+                multipleGoals = True)
 
-        # Construct the initial state
-        initPosition = self.points[initIndex]
-        initOrientation = self.points[initIndex + 1] - initPosition
-        initOrientation = initOrientation/np.linalg.norm(initOrientation)
-        initState = RobotState(initPosition, initOrientation)
+        if bestGoal < 0:
+            print("No path found")
+            return
 
-        # and the goal state
-        goalPosition = self.points[goalIndex]
-        goalOrientation = goalPosition - self.points[goalIndex - 1]
-        goalOrientation = goalOrientation/np.linalg.norm(goalOrientation)
-        goalState = RobotState(goalPosition, goalOrientation)
+        newSteers = self.RRT.getSteers()
 
-        # Calculate both paths
-        self.RRT.computePath(initState, middleState)
-        newPath = self.RRT.getPaths()[0]
-        self.RRT.computePath(middleState, goalState)
-        newPath += self.RRT.getPaths()[0]
+        # Replace the path
+        self.steers[0:badSteerIndex+bestGoal+1] = newSteers
 
-        # insert the new path into points
-        self.points[initIndex : goalIndex + 1] = newPath
-
-        self.trajectoryTracker.setPoints(self.points)
+        # redo the trajectory tracker
+        path = self.steersToPath(self.steers)
+        self.trajectoryTracker = TrajectoryTracker(path)
 
         # Visualize the change
-        self.visualizePoints()
+        self.visualizePoints(path[0][0])
 
-    def visualizePoints(self):
-        self.visualize(self.points,(0.,1.,0.),publisherIndex=0)
+        # Continue driving
+        self.drive = True
+
+    def visualizePoints(self, points):
+        self.visualize(points,(0.,1.,0.),publisherIndex=0)
+
+    @staticmethod
+    def steersToPath(steers):
+        points = []
+        for steer in steers:
+            points += steer.getPoints()
+        return [(points, False)]
 
 if __name__=="__main__":
     rospy.init_node("RSS")

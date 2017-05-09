@@ -10,12 +10,12 @@ from FinalChallengePy.PathPlanning.RRT import RRT
 
 class Test_RRT(VisualizeLine):
     def __init__(self):
-        VisualizeLine.__init__(self,"Test_RRT",numPublishers=2)
+        VisualizeLine.__init__(self,"Test_RRT",numPublishers=3)
 
         self.mapMsg = MapUtils.getMap()
         self.RRT = RRT(self.mapMsg)
 
-        self.goalState = RobotState(-1.7,-3.5,0)
+        self.goalState = RobotState(-1,0,3.14)
         
         self.clickSub = rospy.Subscriber(
                 "/move_base_simple/goal", 
@@ -33,7 +33,7 @@ class Test_RRT(VisualizeLine):
 
         tree = self.RRT.computePath(initState, self.goalState, backwards=True)
 
-        # self.visualize(self.RRT.treeToLineList(tree),(1.,0.,0.),True)
+        self.visualize(self.RRT.treeToLineList(tree),(0.,0.,0.7),publisherIndex=2,lineList=True)
         (forwardPoints, backwardsPoints) = self.RRT.getLineLists()
         self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=0,lineList=True)
         self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)

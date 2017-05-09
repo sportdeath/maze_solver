@@ -16,10 +16,6 @@ class TrajectoryTracker:
         self.pointIndex = 0
         self.pathIndex = 0
 
-    def setPoints(self, points):
-        # Set the points in the last path
-        self.paths[-1] = (points, self.paths[-1][1])
-
     """
     returns (velocity, angle)
     """

@@ -18,7 +18,7 @@ class Test_Steer(VisualizeLine):
         self.rangeLib = MapUtils.getRangeLib(self.mapMsg)
         self.rangeMethod = MapUtils.getRangeMethod(self.rangeLib, self.mapMsg)
 
-        self.initialState = RobotState (-1.7,-3.5,0)
+        self.initialState = RobotState(-1,0,3.14)
         
         self.clickSub = rospy.Subscriber(
                 "/move_base_simple/goal", 

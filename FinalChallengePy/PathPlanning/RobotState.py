@@ -3,15 +3,10 @@ from FinalChallengePy.Utils.GeomUtils import GeomUtils
 from FinalChallengePy.CarConstants import *
 
 class RobotState:
-    def __init__(self, x, y, theta=None, backwards=False):
-        if theta == None:
-            self.position = x
-            self.orientation = y
-            self.theta = GeomUtils.getAngle(self.orientation)
-        else:
-            self.position = np.array([x, y])
-            self.theta = theta
-            self.orientation = np.array([np.cos(theta), np.sin(theta)])
+    def __init__(self, x, y, theta, backwards=False):
+        self.position = np.array([x, y])
+        self.theta = theta
+        self.orientation = np.array([np.cos(theta), np.sin(theta)])
         self.backwards = backwards
 
     def getX(self):
