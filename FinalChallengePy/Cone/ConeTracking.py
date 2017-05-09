@@ -23,7 +23,7 @@ class ConeTracking:
     IMAGE_WIDTH = 672.  # pixel width
     M_X = 0. # start at left side of image
     M_Y = 0.15*IMAGE_HEIGHT # start from 15% from top of image
-    M_HEIGHT = 0.05*IMAGE_HEIGHT # go until 5% from bottom of page
+    M_HEIGHT = 0.85*IMAGE_HEIGHT # go until bottom of image
     M_WIDTH = IMAGE_WIDTH # sample entire width
 
     def __init__(self):
