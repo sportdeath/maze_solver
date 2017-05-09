@@ -15,12 +15,14 @@ class TrajectoryTracker:
         self.paths = paths # [(points, orientation)...]
         self.pointIndex = 0
         self.pathIndex = 0
+        self.isComplete = False
 
     """
     returns (velocity, angle)
     """
     def getControlAngle(self, state, visualizeMethod=None):
         if self.pathIndex >= len(self.paths):
+            self.isComplete = True
             return (0,0)
 
         path = self.paths[self.pathIndex]
@@ -38,6 +40,7 @@ class TrajectoryTracker:
             if np.linalg.norm(goalPointGlobal - state.getPosition()) <= LOOK_AHEAD_DISTANCE:
                 self.pathIndex += 1
                 self.pointIndex = 0
+                self.isComplete = True
                 return (0,0)
 
         if visualizeMethod:
@@ -55,6 +58,8 @@ class TrajectoryTracker:
 
         return (velocity, angle)
 
+    def isPathComplete(self):
+        return self.isComplete
 
     @staticmethod
     def visualize(state, goalPointGlobal, visualizeMethod):
