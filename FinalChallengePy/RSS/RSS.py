@@ -14,10 +14,10 @@ from visualization_msgs.msg import Marker
 
 from FinalChallengePy.Utils.GeomUtils import GeomUtils
 from FinalChallengePy.Utils.LocalGlobalUtils import LocalGlobalUtils
+from FinalChallengePy.Utils.MapUtils import MapUtils
+from FinalChallengePy.Utils.RobotState import RobotState
+from FinalChallengePy.Utils.VisualizeLine import VisualizeLine
 
-from FinalChallengePy.PathPlanning.MapUtils import MapUtils
-from FinalChallengePy.PathPlanning.RobotState import RobotState
-from FinalChallengePy.PathPlanning.VisualizeLine import VisualizeLine
 from FinalChallengePy.PathPlanning.RRT import RRT
 from FinalChallengePy.PathPlanning.FakeWall import FakeWall
 
@@ -52,6 +52,8 @@ class RSS(VisualizeLine):
         path = RSS.steersToPath(self.steers)
         self.trajectoryTracker = TrajectoryTracker(path)
 
+        self.fakeWalls = []
+
         self.commandPub = rospy.Publisher(
                 "/vesc/high_level/ackermann_cmd_mux/input/nav_0",
                 AckermannDriveStamped,
@@ -81,12 +83,11 @@ class RSS(VisualizeLine):
             self.visualizePoints(path[0][0])
             rospy.sleep(0.1)
 
-    def visualizeFakeWall(self, fakeWall, direction):
-        if direction == RED_CONE_DIRECTION:
-            color = (1., 0., 0.)
-        else:
-            color = (0., 1., 0.)
-        self.visualize(fakeWall, color, publisherIndex=2)
+    def visualizeFakeWalls(self, fakeWalls):
+        lineList = []
+        for fakeWall in fakeWalls:
+            lineList += fakeWall.getLine()
+        self.visualize(lineList, (1., 1., 0.), publisherIndex=2, lineList = True)
 
     def clickedPoint(self, msg):
         x = msg.point.x
@@ -155,7 +156,28 @@ class RSS(VisualizeLine):
                 direction, 
                 self.rangeMethod
                 )
-        self.visualizeFakeWall(fakeWall.getLine(), direction)
+
+        # update the fake walls
+
+        # test to see if is already in the list
+        isNew = True
+        for index, f in enumerate(self.fakeWalls):
+            if np.linalg.norm(f.point - fakeWall.point) < CONE_DISTANCE_THRESHOLD:
+                # if it is, update it
+                self.fakeWalls[index] = fakeWall
+                isNew = False
+                break
+
+        # if it is not, add and pop!
+        if isNew:
+            self.fakeWalls.append(fakeWall)
+
+        # clear ones that are behind the car
+        for index, f in enumerate(self.fakeWalls):
+            if LocalGlobalUtils.globalToLocal(self.state, f.point)[1] < 0:
+                self.fakeWalls.pop(index)
+
+        self.visualizeFakeWalls(self.fakeWalls)
 
         # Find the first section which intersects the fake wall path 
         badSteerIndex = -1
@@ -181,8 +203,8 @@ class RSS(VisualizeLine):
         bestGoal, tree = self.RRT.computePath(
                 self.state, 
                 goalStates, 
-                fakeWall = fakeWall.getBufferedLine(), 
-                sampleStates = [fakeWall.getSampleCenter()],
+                fakeWalls = [f.getBufferedLine() for f in self.fakeWalls],
+                sampleStates = [f.getSampleCenter() for f in self.fakeWalls],
                 multipleGoals = True)
 
         self.visualize(self.RRT.treeToLineList(tree),(0.,0.,0.7),publisherIndex=3,lineList=True)

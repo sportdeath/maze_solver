@@ -4,10 +4,12 @@ import rospy
 from geometry_msgs.msg import PoseStamped
 from ackermann_msgs.msg import AckermannDriveStamped
 
-from FinalChallengePy.PathPlanning.MapUtils import MapUtils
-from FinalChallengePy.PathPlanning.RobotState import RobotState
-from FinalChallengePy.PathPlanning.VisualizeLine import VisualizeLine
+from FinalChallengePy.Utils.MapUtils import MapUtils
+from FinalChallengePy.Utils.RobotState import RobotState
+from FinalChallengePy.Utils.VisualizeLine import VisualizeLine
+
 from FinalChallengePy.PathPlanning.RRT import RRT
+
 from FinalChallengePy.TrajectoryTracking.TrajectoryTracker import TrajectoryTracker
 from FinalChallengePy.TrajectoryTracking.Constants import *
 

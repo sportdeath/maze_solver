@@ -1,6 +1,6 @@
 import numpy as np
 
-from FinalChallengePy.PathPlanning.RobotState import RobotState
+from FinalChallengePy.Utils.RobotState import RobotState
 
 class Sampling:
     @staticmethod

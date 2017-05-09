@@ -4,8 +4,9 @@ import numpy as np
 
 import rospy
 
-from FinalChallengePy.PathPlanning.MapUtils import MapUtils
-from FinalChallengePy.PathPlanning.RobotState import RobotState
+from FinalChallengePy.Utils.MapUtils import MapUtils
+from FinalChallengePy.Utils.RobotState import RobotState
+
 from FinalChallengePy.PathPlanning.RRT import RRT
 
 from FinalChallengePy.RSS.Constants import *

@@ -179,13 +179,13 @@ class Steer:
 
         angleOffset = 0.
         while angleOffset < totalAngle:
-            angle = (direction * angleOffset) + startAngle
-            axle = MIN_RADIUS * np.array([np.sin(angle), np.cos(angle)])
+            angle = (-direction * angleOffset) + startAngle
+            axle = MIN_RADIUS * GeomUtils.getVector(angle)
             points.append(axle + center)
             angleOffset += ANGLE_SPACING
         angleOffset = totalAngle
-        angle = (direction * angleOffset) + startAngle
-        axle = MIN_RADIUS * np.array([np.sin(angle), np.cos(angle)])
+        angle = (-direction * angleOffset) + startAngle
+        axle = MIN_RADIUS * GeomUtils.getVector(angle)
         points.append(axle + center)
 
         return points
@@ -196,16 +196,31 @@ class Steer:
 
         angleOffset = 0.
         while angleOffset < totalAngle:
-            angle = (direction * angleOffset) + startAngle
-            axle = np.array([np.sin(angle), np.cos(angle)])
-            pointsAndNorms.append((MIN_RADIUS * axle + center, GeomUtils.getPerpendicular(axle)))
+            angle = (-direction * angleOffset) + startAngle
+            axle = GeomUtils.getVector(angle)
+            pointsAndNorms.append((MIN_RADIUS * axle + center, direction * GeomUtils.getPerpendicular(axle)))
             angleOffset += ANGLE_SPACING
         angleOffset = totalAngle
-        angle = (direction * angleOffset) + startAngle
-        axle = np.array([np.sin(angle), np.cos(angle)])
-        pointsAndNorms.append((MIN_RADIUS * axle + center, GeomUtils.getPerpendicular(axle)))
+        angle = (-direction * angleOffset) + startAngle
+        axle = GeomUtils.getVector(angle)
+        pointsAndNorms.append((MIN_RADIUS * axle + center, direction * GeomUtils.getPerpendicular(axle)))
 
         return pointsAndNorms
+
+    def getPointsAndNorms(self):
+        initPointsAndNorms = Steer.getPointsAndNormsOnCircle(
+                self.initCircleCenter,
+                self.initStartAngle,
+                self.initAngle,
+                self.initSide)
+
+        goalPointsAndNorms = Steer.getPointsAndNormsOnCircle(
+                self.goalCircleCenter,
+                self.goalStartAngle,
+                self.goalAngle,
+                self.goalSide)
+
+        return initPointsAndNorms + goalPointsAndNorms
 
     @staticmethod
     def getPointsOnLine(start, norm, totalLength):
@@ -262,7 +277,7 @@ class Steer:
             norm = relative/np.linalg.norm(relative)
             angle = GeomUtils.getAngle(norm)
 
-            relativeAngle = np.mod(direction * (angle - startAngle), 2.*np.pi)
+            relativeAngle = np.mod(-direction * (angle - startAngle), 2.*np.pi)
             if relativeAngle < totalAngle:
                 return True
             
@@ -324,14 +339,17 @@ class Steer:
         
         return False
 
-    def isSteerable(self, fakeWall = None):
+    def isSteerable(self, fakeWalls = None):
         # Not steerable the goal point
         # is inside the intial point's circle
         # or if there are collisions
-        if fakeWall is not None:
-            return self.steerable and (not self.intersects(fakeWall))
-        else:
-            return self.steerable
+        if not self.steerable:
+            return False
+        if fakeWalls is not None:
+            for fakeWall in fakeWalls:
+                if self.intersects(fakeWall):
+                    return False
+        return True
 
     def getLength(self):
         length = 0
@@ -361,19 +379,8 @@ class Steer:
         return self.goal
 
     def isCollisionFree(self, rangeMethod):
-        initPointsAndNorms = Steer.getPointsAndNormsOnCircle(
-                self.initCircleCenter,
-                self.initStartAngle,
-                self.initAngle,
-                self.initSide)
 
-        goalPointsAndNorms = Steer.getPointsAndNormsOnCircle(
-                self.goalCircleCenter,
-                self.goalStartAngle,
-                self.goalAngle,
-                self.goalSide)
-
-        for (point,norm) in (goalPointsAndNorms + initPointsAndNorms):
+        for (point,norm) in self.getPointsAndNorms():
             isFree = self.testCollisions(
                     point,
                     CAR_WIDTH + CIRCLE_WIDTH_ADJUSTMENT,
@@ -386,9 +393,11 @@ class Steer:
         # To check intersections along the line
         # Have points at the car's left and right
         # back wheel and propagate them forward
-        return self.testCollisions(
+        lineCollision = self.testCollisions(
                 self.initTangentPoint,
                 CAR_WIDTH,
                 self.lineLength,
                 self.lineNorm,
                 rangeMethod)
+
+        return lineCollision

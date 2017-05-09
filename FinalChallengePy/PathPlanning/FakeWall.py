@@ -1,6 +1,7 @@
 from FinalChallengePy.Utils.GeomUtils import GeomUtils
 from FinalChallengePy.PathPlanning.Constants import *
-from FinalChallengePy.PathPlanning.RobotState import RobotState
+
+from FinalChallengePy.Utils.RobotState import RobotState
 
 import numpy as np
 
@@ -35,10 +36,10 @@ class FakeWall:
         self.rangeMethod = rangeMethod
     
     def getBufferedLine(self):
-        return (self.endPoint, self.point - FAKE_WALL_BUFFER*self.norm)
+        return [self.endPoint, self.point - FAKE_WALL_BUFFER*self.norm]
     
     def getLine(self):
-        return (self.endPoint, self.point - FAKE_WALL_EXTENSION*self.norm)
+        return [self.endPoint, self.point - FAKE_WALL_EXTENSION*self.norm]
 
     def getSampleCenter(self):
         # sample half way in between
@@ -48,8 +49,6 @@ class FakeWall:
         center = point - distanceToWall/2. * self.norm
 
         # orientation = perpendicular to norm
-        angle = self.angle - self.direction * np.pi/2.
-
-        angle -= np.pi/2.
+        angle = self.angle + self.direction * np.pi/2.
 
         return RobotState(center[0], center[1], angle)

@@ -7,16 +7,16 @@ from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PointStamped
 
-from FinalChallengePy.PathPlanning.MapUtils import MapUtils
-from FinalChallengePy.PathPlanning.VisualizeLine import VisualizeLine
 from FinalChallengePy.PathPlanning.FakeWall import FakeWall
 from FinalChallengePy.PathPlanning.Steer import Steer 
 
-from FinalChallengePy.PathPlanning.RobotState import RobotState
+from FinalChallengePy.Utils.MapUtils import MapUtils
+from FinalChallengePy.Utils.VisualizeLine import VisualizeLine
+from FinalChallengePy.Utils.RobotState import RobotState
 
 class Test_FakeWall(VisualizeLine):
     def __init__(self):
-        VisualizeLine.__init__(self,"Test_FakeWall", numPublishers = 3)
+        VisualizeLine.__init__(self,"Test", numPublishers = 3)
 
         self.mapMsg = MapUtils.getMap()
         self.rangeLib = MapUtils.getRangeLib(self.mapMsg)

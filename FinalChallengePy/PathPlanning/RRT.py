@@ -4,9 +4,10 @@ from rtree import index
 
 from FinalChallengePy.PathPlanning.Steer import Steer
 from FinalChallengePy.PathPlanning.Sampling import Sampling
-from FinalChallengePy.PathPlanning.RobotState import RobotState
-from FinalChallengePy.PathPlanning.MapUtils import MapUtils
 from FinalChallengePy.PathPlanning.Constants import *
+
+from FinalChallengePy.Utils.RobotState import RobotState
+from FinalChallengePy.Utils.MapUtils import MapUtils
 
 class RRTNode:
     def __init__(self, state, cost, parent):
@@ -53,8 +54,7 @@ class RRT:
         y = state.getPosition()[1]
         return [tree[i] for i in nnTree.nearest((x, y, x, y), k)]
 
-    def computePath(self, init, goal, backwards=False, fakeWall = None, multipleGoals = False, sampleStates = []):
-        print("yo?")
+    def computePath(self, init, goal, backwards=False, fakeWalls = None, multipleGoals = False, sampleStates = []):
         tree = [RRTNode(init, 0, None)]
         nnTree = index.Index()
         RRT.nnTreeInsertLastElement(nnTree, tree)
@@ -65,13 +65,15 @@ class RRT:
             goalStates = [goal]
 
         if backwards:
+            newGoalStates = []
             for g in goalStates:
                 backwardsGoal = RobotState(
                         g.getX(),
                         g.getY(),
                         g.getTheta(),
                         not g.isBackwards())
-                goalStates.append(backwardsGoal)
+                newGoalStates.append(backwardsGoal)
+            goalStates += newGoalStates
 
         # Building paths to goal
         newState = True
@@ -81,6 +83,7 @@ class RRT:
 
         newState = True
         i = 0
+
         while self.maxIterations < 0 or i < self.maxIterations:
             if self.verbose:
                 print(i)
@@ -90,13 +93,14 @@ class RRT:
                     newState,
                     goalStates,
                     backwards, 
-                    fakeWall = fakeWall, 
+                    fakeWalls = fakeWalls, 
                     sampleStates = sampleStates)
             if goal:
                 if tree[-1].cost < bestCost:
                     bestGoalIndex = goalIndex
                     bestGoal = tree[-1]
                     bestCost = tree[-1].cost
+
                 if self.maxIterations < 0:
                     break
             i += 1
@@ -105,20 +109,20 @@ class RRT:
             if self.verbose:
                 print("Found goal, optimizing")
             self.path = RRT.treeToPath(tree, bestGoal)
-            self.optimize(sampleStates, backwards, fakeWall)
+            self.optimize(sampleStates, backwards, fakeWalls)
             return bestGoalIndex, tree
 
         self.path = [(init.getPosition(), False)]
         return -1, tree
 
-    def updateTree(self, tree, nnTree, newState, goalStates, backwards, fakeWall = None,  sampleStates = []):
+    def updateTree(self, tree, nnTree, newState, goalStates, backwards, fakeWalls = None,  sampleStates = []):
         # Check whether last state we added 
         # has steerable path to goal
         if newState:
             for goalIndex, goal in enumerate(goalStates):
                 steer = Steer(tree[-1].state, goal, self.rangeMethod)
 
-                if steer.isSteerable(fakeWall = fakeWall):
+                if steer.isSteerable(fakeWalls = fakeWalls):
                     # If is is add the goal state to
                     # the tree and return
                     tree.append(
@@ -136,7 +140,7 @@ class RRT:
 
         for node in RRT.getKNearest(randomState, nnTree, tree, K):
             steer = Steer(node.state, randomState, self.rangeMethod)
-            if steer.isSteerable(fakeWall = fakeWall):
+            if steer.isSteerable(fakeWalls = fakeWalls):
                 length = steer.getLength()
                 if length + node.cost < minCost:
                     minCost = length + node.cost
@@ -189,7 +193,7 @@ class RRT:
         forwardList = []
         backwardList = []
 
-        paths = self.getPaths(oriented = True)
+        paths = self.getPoints(self.path, oriented = True)
 
         for path in paths:
             if path[1]:
@@ -248,7 +252,7 @@ class RRT:
 
         return paths
 
-    def optimize(self, states, backwards, fakeWall = None):
+    def optimize(self, states, backwards, fakeWalls = None):
         if len(self.path) < 3:
             return
 
@@ -261,7 +265,7 @@ class RRT:
                 steer1 = Steer(self.path[i - 1].state, randomState, self.rangeMethod)
                 steer2 = Steer(randomState, self.path[i + 1].state, self.rangeMethod)
 
-                if steer1.isSteerable(fakeWall = fakeWall) and steer2.isSteerable(fakeWall = fakeWall):
+                if steer1.isSteerable(fakeWalls = fakeWalls) and steer2.isSteerable(fakeWalls = fakeWalls):
                     oldCost = (self.path[i].cost - self.path[i - 1].cost) \
                             + (self.path[i + 1].cost - self.path[i].cost)
                     newCost = steer1.getLength() + steer2.getLength()
