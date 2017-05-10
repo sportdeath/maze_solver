@@ -10,9 +10,8 @@ from geometry_msgs.msg import Point
 from FinalChallengePy.Cone.Constants import *
 
 class Cone:
-    def __init__(self, state, conePixels):
-        localPoint = CoordinateTransformations.pixelsToLocal(conePixels)
-        self.position = LocalGlobalUtils.localToGlobal(state, localPoint)
+    def __init__(self, conePixels):
+        self.position = CoordinateTransformations.pixelsToLocal(conePixels)
 
     def getPosition(self):
         return self.position

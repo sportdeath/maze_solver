@@ -116,7 +116,7 @@ class ConeThreshold:
 
     def getBottomCenterPoint(self):
         bottomCenterX = self.bestxTop + self.bestWidth/2
-        bottomCenterY = self.bestyTop - self.bestHeight
+        bottomCenterY = self.bestyTop + self.bestHeight
         return np.array([bottomCenterX, bottomCenterY])
 
     def getBoundedImage(self, colorText):
@@ -131,8 +131,6 @@ class ConeThreshold:
 
             if contour is self.bestContour:
                 color = [0,255,0]
-            elif np.array(contour in self.filteredContours).any():
-                color = [0,255,255]
             else:
                 color = [0,0,255]
 
@@ -153,6 +151,12 @@ class ConeThreshold:
                     1,\
                     color,\
                     2)
+
+            # mark the center point
+            if self.doesExist():
+                centerPoint = self.getBottomCenterPoint()
+                centerPoint = (centerPoint[0], centerPoint[1])
+                cv2.circle(boundedImage,centerPoint,2,[0,0,255],thickness=2)
 
         return boundedImage
 

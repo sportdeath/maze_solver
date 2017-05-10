@@ -14,7 +14,7 @@ class Test_CoordinateTransformations:
         img = cv2.imread(TEST_IMAGE)
 
         NUM_STEPS = 200
-        STEP_SIZE = 0.5
+        STEP_SIZE = 0.05
 
         for i in xrange(NUM_STEPS):
             print(i)
@@ -29,7 +29,7 @@ class Test_CoordinateTransformations:
         cv2.imwrite(TEST_IMAGE_OUT, img)
 
         self.clickSub = rospy.Subscriber(
-                "/zed/left/image_raw_color_mouse_left", 
+                "/zed/left/image_rect_color_mouse_left", 
                 Point, 
                 self.pointClicked, 
                 queue_size=1)

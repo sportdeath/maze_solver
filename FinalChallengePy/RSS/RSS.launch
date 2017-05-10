@@ -1,0 +1,4 @@
+<launch>
+	<node name="ConeTracker" pkg="final_challenge" type="ConeTracking.py" output="screen" />
+	<node name="RSS" pkg="final_challenge" type="RSS.py" output="screen" />
+</launch>

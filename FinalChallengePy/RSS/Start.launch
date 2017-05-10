@@ -1,0 +1,9 @@
+<launch>
+    <include file="$(find racecar)/launch/teleop.launch" />
+    <include file="$(find zed_wrapper)/launch/zed.launch" />
+
+    <arg name="map" default="$(find final_challenge)/Maps/BasementMap.yaml"/>
+    <node pkg="map_server" name="map_server" type="map_server" args="$(arg map)" />
+
+    <include file="$(find particle_filter)/launch/localize.launch" />
+</launch>

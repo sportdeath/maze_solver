@@ -11,13 +11,17 @@ from FinalChallengePy.Vision.Constants import *
 class TransformationGenerator:
     def __init__(self):
         # Real world values
-        self.sources = [np.array([0.,0.6,1.]), np.array([0.,5.,1.])]
+        self.sources = [
+            np.array([-2.28, 3.525]),
+            np.array([2.15,2.69]),
+            np.array([-.293,.66]),
+            np.array([.24,.66])]
 
         # Get pixel values
         self.pixelCoords = []
 
         self.clickSub = rospy.Subscriber(
-                "/zed/left/image_raw_color_mouse_left", 
+                "/zed/left/image_rect_color_mouse_left", 
                 Point, 
                 self.pointClicked, 
                 queue_size=1)

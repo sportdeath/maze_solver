@@ -1,5 +1,5 @@
 # The velocity of the car
-CAR_VELOCITY = 1. # meters/seconds
+CAR_VELOCITY = 0.5 # meters/seconds
 CAR_TUNE_VELOCITY = 0.3 # meters/seconds
 
 # measured from the

@@ -3,6 +3,8 @@
 import numpy as np
 
 import rospy
+from std_msgs.msg import Header
+from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import PoseStamped
 from ackermann_msgs.msg import AckermannDriveStamped
@@ -19,6 +21,8 @@ from FinalChallengePy.PathPlanning.RRT import RRT
 from FinalChallengePy.RSS.Constants import *
 from FinalChallengePy.TrajectoryTracking.TrajectoryTracker import TrajectoryTracker
 from FinalChallengePy.TrajectoryTracking.Constants import *
+
+from FinalChallengePy.Utils.LocalGlobalUtils import LocalGlobalUtils
 
 from FinalChallengePy.Cone.Constants import RED_CONE_DIRECTION
 
@@ -56,11 +60,16 @@ class RSS(VisualizeLine):
                 self.gotConeData, 
                 queue_size = 1)
 
+        self.redCones = []
+        self.greenCones = []
+        self.conePublishers = []
+
         for i in xrange(2):
-            self.conePublishers = rospy.Publisher(
+            self.conePublishers.append(
+                rospy.Publisher(
                     "/cone_visualizer"+str(i),
                     Marker,
-                    queue_size=1)
+                    queue_size=1))
 
         for i in xrange(10):
             self.visualizePoints()
@@ -72,7 +81,7 @@ class RSS(VisualizeLine):
         header.frame_id = "/base_link"
 
         cone = Marker()
-        cone.type = Marker.CUBE
+        cone.type = Marker.CUBE_LIST
         cone.action = Marker.ADD
         cone.header = header
         cone.scale.x = 0.1
@@ -86,25 +95,35 @@ class RSS(VisualizeLine):
 
         for c in cones:
             p = Point()
-            p.x = c.getPosition()[0]
-            p.y = c.getPosition()[1]
+            p.x = c[0]
+            p.y = c[1]
             p.z = 0.0001
             cone.points.append(p)
 
         publisher.publish(cone)
 
+        self.publishTransformationFrame()
+
     def gotConeData(self, msg):
         x = msg.location.x
         y = msg.location.y
-        point = np.array([x, y])
+        localPoint = np.array([x, y])
+        point = LocalGlobalUtils.localToGlobal(self.state, localPoint)
+        rospy.loginfo("We see a cone at point " + str(point))
         direction = msg.direction
         if direction == RED_CONE_DIRECTION:
-            self.redCones.append(point)
+            # self.redCones.append(point)
+            self.redCones = [point]
+            rospy.loginfo("The cone is red")
         else:
-            self.greenCones.append(point)
+            # self.greenCones.append(point)
+            self.greenCones = [point]
+            rospy.loginfo("The cone is green")
+        print("Red cones: ", self.redCones)
+        print("Green cones: ", self.greenCones)
         self.visualizeCones(self.redCones, self.conePublishers[0], (1.,0.,0.))
         self.visualizeCones(self.greenCones, self.conePublishers[1], (0.,1.,0.))
-        self.planAroundPoint(point, direction)
+        # self.planAroundPoint(point, direction)
 
     def goalPointVisualizer(self, points):
         self.visualize(points,(0.,0.,1.),publisherIndex=1,lineList=True)
@@ -122,6 +141,7 @@ class RSS(VisualizeLine):
         if self.trajectoryTracker:
             self.trajectoryTracker.publishCommand(self.state, self.commandPub, self.goalPointVisualizer)
         else:
+            rospy.loginfo("Planning path to start...")
             # determine start state
             goalPosition = self.points[0]
             goalOrientation = self.points[1] - self.points[0]
@@ -140,6 +160,8 @@ class RSS(VisualizeLine):
             
             # Go!
             self.trajectoryTracker = TrajectoryTracker(paths)
+
+            rospy.loginfo("Path planning complete.")
 
     def clickedPoint(self, msg):
         x = msg.point.x
