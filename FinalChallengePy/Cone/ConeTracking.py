@@ -18,6 +18,14 @@ class ConeTracking:
     
     referenceState = RobotState(0.,0.,0.)
 
+    # Set coordinates for setpoint control line follower
+    IMAGE_HEIGHT = 376.  # pixel height
+    IMAGE_WIDTH = 672.  # pixel width
+    M_X = 0. # start at left side of image
+    M_Y = 0.15*IMAGE_HEIGHT # start from 15% from top of image
+    M_HEIGHT = 0.85*IMAGE_HEIGHT # go until bottom of image
+    M_WIDTH = IMAGE_WIDTH # sample entire width
+
     def __init__(self):
         self.redCones = []
         self.greenCones = []
@@ -53,8 +61,13 @@ class ConeTracking:
         # convert rosmsg to cv2 type
         imageCv = self.bridge.imgmsg_to_cv2(image_msg)
 
-        redThreshold = ConeThreshold(imageCv, HSV_MIN_ORANGE, HSV_MAX_ORANGE)
-        greenThreshold = ConeThreshold(imageCv, HSV_MIN_GREEN, HSV_MAX_GREEN)
+        # mask top and bottom of image
+        manualMask = np.zeros(imageCv.shape, np.uint8)
+        manualMask[M_Y:M_Y+M_HEIGHT, M_X:M_X+M_WIDTH] = imageCv[M_Y:M_Y+M_HEIGHT, M_X:M_X+M_WIDTH]
+
+        # add color thresholding
+        redThreshold = ConeThreshold(manualMask, HSV_MIN_ORANGE, HSV_MAX_ORANGE)
+        greenThreshold = ConeThreshold(manualMask, HSV_MIN_GREEN, HSV_MAX_GREEN)
         
         # Uncomment for debugging purposes
         outputCombined = cv2.add(
