@@ -3,27 +3,25 @@ import numpy as np
 from FinalChallengePy.PathPlanning.RobotState import RobotState
 
 class Sampling:
-    def __init__(self, currentState, positionSampleWidth, angleSampleWidth):
-        self.currentState = currentState
-        self.currentPosition = currentState.getPosition()
-
-        self.positionSampleWidth = positionSampleWidth
-        self.angleSampleWidth = angleSampleWidth
-
-    def getRandomState(self):
-        newX, newY = np.random.normal(loc=self.currentPosition, scale=self.positionSampleWidth)
-
-        newTheta = np.random.normal(loc=self.currentState.getTheta(), scale=self.angleSampleWidth)
-        newTheta = self.recenterTheta(newTheta)
-
-        randomState = RobotState(newX, newY, newTheta, self.currentState.isBackwards())
-
-        return randomState
-
-    def recenterTheta(self, theta):
-        while theta < 0:
-            theta += 2*np.pi
-        while theta > 2*np.pi:
-            theta -= 2*pi
-
-        return theta
+    @staticmethod
+    def getGaussianState(state, positionStdDev, angleStdDev, backwards=False):
+        x, y = np.random.normal(loc=state.getPosition, scale=self.positionStdDev)
+        theta = np.random.normal(loc=state.getTheta(), scale=self.angleStdDev))
+        
+        if backwards:
+            backwards = bool(np.random.randomint(2))
+        
+        return RobotState(x, y, theta, backwards)
+    
+    @staticmethod
+    def getUniformState(unoccupiedPoints, backwards=False):
+        
+        index = np.random.randint(len(unoccupiedPoints))
+        position = unoccupiedPoints[index]
+        
+        theta = np.random.uniform(0, 2*np.pi)
+        
+        if backwards:
+            backwards = bool(np.random.randint(2))
+            
+        return RobotState(position[0], position[1], theta, backwards)

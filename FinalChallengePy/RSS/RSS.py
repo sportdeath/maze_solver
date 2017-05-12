@@ -13,6 +13,7 @@ from final_challenge.msg import ConeInfo
 from visualization_msgs.msg import Marker
 
 from FinalChallengePy.Utils.GeomUtils import GeomUtils
+from FinalChallengePy.Utils.LocalGlobalUtils import LocalGlobalUtils
 
 from FinalChallengePy.PathPlanning.MapUtils import MapUtils
 from FinalChallengePy.PathPlanning.RobotState import RobotState
@@ -42,7 +43,7 @@ class RSS(VisualizeLine):
         self.state = RobotState(-1,0,3.14)
 
         self.drive = True
-        self.gotLocalizationData = False
+        self.firstLocalizationData = False
 
         # Load the points from file
         self.steers = pickle.load(open(BIG_PATH_FILE, 'rb'))
@@ -72,6 +73,8 @@ class RSS(VisualizeLine):
                 self.gotConeData, 
                 queue_size = 1)
 
+        rospy.loginfo("Almost done")
+
         for i in xrange(10):
             self.visualizePoints(path[0][0])
             rospy.sleep(0.1)
@@ -92,9 +95,10 @@ class RSS(VisualizeLine):
     def gotConeData(self, msg):
         x = msg.location.x
         y = msg.location.y
-        point = np.array([x, y])
+        pointLocal = np.array([x, y])
+        pointGlobal = LocalGlobalUtils.localToGlobal(self.state, pointLocal)
         direction = msg.direction
-        self.planAroundPoint(point, direction)
+        self.planAroundPoint(pointGlobal, direction)
 
     def goalPointVisualizer(self, points):
         self.visualize(points,(0.,0.,1.),publisherIndex=1,lineList=True)
@@ -109,30 +113,33 @@ class RSS(VisualizeLine):
         # Move state backwards
         self.state.lidarToRearAxle()
 
-        if not self.gotLocalizationData:
-            goalStates = [self.steers[i].getGoalState() for i in xrange(len(self.steers))]
+        if not self.firstLocalizationData:
+            rospy.loginfo("planning path to goal")
 
             bestGoal, _ = self.RRT.computePath(
                     self.state, 
-                    goalStates,
-                    multipleGoals = True)
+                    self.steers[0].getGoalState())
 
             if bestGoal < 0:
-                print("No path found")
-                return
+                rospy.loginfo("No path found")
 
-            newSteers = self.RRT.getSteers()
+            else:
+                rospy.loginfo("Path found")
+                newSteers = self.RRT.getSteers()
 
-            # Replace the path
-            self.steers[0:bestGoal+1] = newSteers
+                # Replace the path
+                self.steers[0:bestGoal+1] = newSteers
 
-            # redo the trajectory tracker
-            path = self.steersToPath(self.steers)
-            self.trajectoryTracker = TrajectoryTracker(path)
+                # redo the trajectory tracker
+                path = self.steersToPath(self.steers)
+                self.trajectoryTracker = TrajectoryTracker(path)
 
-            self.gotLocalizationData = True
+                self.firstLocalizationData = True
 
-        if self.gotLocalizationData and self.drive:
+                # Visualize the change
+                self.visualizePoints(path[0][0])
+
+        if self.firstLocalizationData and self.drive:
             self.trajectoryTracker.publishCommand(self.state, self.commandPub, self.goalPointVisualizer)
 
     '''
@@ -162,6 +169,8 @@ class RSS(VisualizeLine):
         if badSteerIndex < 0:
             return
 
+        rospy.loginfo("Planning path around cone")
+
         # Otherwise we must compute a new path
         # Stop driving!
         self.drive = False
@@ -175,8 +184,10 @@ class RSS(VisualizeLine):
                 multipleGoals = True)
 
         if bestGoal < 0:
-            print("No path found")
+            rospy.loginfo("No path found")
             return
+
+        rospy.loginfo("Path found!")
 
         newSteers = self.RRT.getSteers()
 

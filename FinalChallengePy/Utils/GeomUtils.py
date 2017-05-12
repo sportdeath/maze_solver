@@ -10,6 +10,10 @@ class GeomUtils:
         return np.arccos(np.clip(vector[1],-1,1)) * GeomUtils.sign(vector[0])
 
     @staticmethod
+    def getVector(angle):
+        return np.array([np.sin(angle), np.cos(angle)])
+
+    @staticmethod
     def getAngleBetweenVectors(init, goal, direction):
         initAngle = direction * GeomUtils.getAngle(init)
         goalAngle = direction * GeomUtils.getAngle(goal)

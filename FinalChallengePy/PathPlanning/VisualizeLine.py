@@ -24,7 +24,7 @@ class VisualizeLine:
     def visualize(self, points, color = (1.,1.,1.), lineList = False, publisherIndex = 0):
         header = Header()
         header.stamp = rospy.Time.now()
-        header.frame_id = "/base_link"
+        header.frame_id = "/map"
 
         lineStrip = Marker()
         if lineList:
