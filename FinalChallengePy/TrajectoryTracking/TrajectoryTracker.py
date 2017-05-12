@@ -56,6 +56,8 @@ class TrajectoryTracker:
             velocity *= -1.
         angle = PurePursuit.getAckermannAngle(goalPointLocal)
 
+        np.clip(angle, -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE)
+
         return (velocity, angle)
 
     def isPathComplete(self):

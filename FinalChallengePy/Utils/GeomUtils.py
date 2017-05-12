@@ -7,18 +7,19 @@ class GeomUtils:
 
     @staticmethod
     def getAngle(vector):
-        return np.arccos(np.clip(vector[1],-1,1)) * GeomUtils.sign(vector[0])
+        return np.arccos(np.clip(vector[0],-1,1)) * GeomUtils.sign(vector[1])
 
     @staticmethod
     def getVector(angle):
-        return np.array([np.sin(angle), np.cos(angle)])
+        return np.array([np.cos(angle), np.sin(angle)])
 
     @staticmethod
     def getAngleBetweenVectors(init, goal, direction):
-        initAngle = direction * GeomUtils.getAngle(init)
-        goalAngle = direction * GeomUtils.getAngle(goal)
+        initAngle = -direction * GeomUtils.getAngle(init)
+        goalAngle = -direction * GeomUtils.getAngle(goal)
         if goalAngle < initAngle:
             goalAngle += 2 * np.pi
+
         return goalAngle - initAngle
 
     @staticmethod

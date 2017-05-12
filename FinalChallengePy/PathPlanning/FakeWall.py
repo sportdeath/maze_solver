@@ -1,12 +1,13 @@
 from FinalChallengePy.Utils.GeomUtils import GeomUtils
 from FinalChallengePy.PathPlanning.Constants import *
 
+from FinalChallengePy.Utils.RobotState import RobotState
+
 import numpy as np
 
 class FakeWall:
 
-    @staticmethod
-    def makeFakeWall(point, normal, direction, rangeMethod):
+    def __init__(self, point, normal, direction, rangeMethod):
 
         # Find the minimum angle (the closest wall)
         minDistance = np.inf
@@ -26,9 +27,28 @@ class FakeWall:
 
         minDistance = rangeMethod(point, minAngle)
 
-        # The point on the wall
-        endPoint = point + minDistance * minNorm
+        self.angle = minAngle
+        self.norm = minNorm
+        self.distance = minDistance
+        self.point = point
+        self.endPoint = point + self.distance * self.norm
+        self.direction = direction
+        self.rangeMethod = rangeMethod
+    
+    def getBufferedLine(self):
+        return [self.endPoint, self.point - FAKE_WALL_BUFFER*self.norm]
+    
+    def getLine(self):
+        return [self.endPoint, self.point - FAKE_WALL_EXTENSION*self.norm]
 
-        point = point - FAKE_WALL_BUFFER * minNorm
-        
-        return (point, endPoint)
+    def getSampleCenter(self):
+        # sample half way in between
+        # buffered distance
+        point = self.getLine()[1]
+        distanceToWall = self.rangeMethod(point, self.angle+np.pi)
+        center = point - distanceToWall/2. * self.norm
+
+        # orientation = perpendicular to norm
+        angle = self.angle + self.direction * np.pi/2.
+
+        return RobotState(center[0], center[1], angle)
