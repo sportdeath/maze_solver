@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
+import numpy as np
 from geometry_msgs.msg import PoseStamped
 from ackermann_msgs.msg import AckermannDriveStamped
 
@@ -26,7 +27,7 @@ class Parking(VisualizeLine):
         self.exitPoint = rospy.get_param("~exit_point")
 
         self.wayPoints = np.array([self.parkingPoint, self.exitPoint])
-        self.segmentsComplete = np.zeros(self.wayPoints.shape, dtype=bool)
+        self.segmentsComplete = np.zeros(self.wayPoints.shape[0], dtype=bool)
         self.currentSegmentIndex = 0
 
         self.poseSub = rospy.Subscriber(
@@ -39,6 +40,8 @@ class Parking(VisualizeLine):
                 "/vesc/high_level/ackermann_cmd_mux/input/nav_0",
                 AckermannDriveStamped,
                 queue_size = 1)
+
+        self.parking()
 
     def goalPointVisualizer(self, points):
         self.visualize(points,(0.,0.,1.),publisherIndex=2,lineList=True)
@@ -57,7 +60,7 @@ class Parking(VisualizeLine):
             self.trajectoryTracker.publishCommand(self.state, self.commandPub, self.goalPointVisualizer)
 
     def goToPoint(self, point):
-        goalState = RobotState(point[0], point[1], point[2])
+        goalState = RobotState(float(point[0]), float(point[1]), float(point[2]))
 
         # Visualize the tree
         rospy.loginfo("Planning path from " + str(self.state.getPosition()) + " to " + str(goalState.getPosition()))
@@ -77,9 +80,11 @@ class Parking(VisualizeLine):
         if self.segmentsComplete[self.currentSegmentIndex]:
             self.currentSegmentIndex += 1
 
-        self.goToPoint(self.wayPoints[self.currentSegmentIndex])
+        if self.currentSegmentIndex >= len(self.segmentsComplete):
+            rospy.loginfo("Finished parking challenge")
+            return
 
-        rospy.loginfo("Finished parking challenge.")
+        self.goToPoint(self.wayPoints[self.currentSegmentIndex])
 
     def clickedPose(self, msg):
         # The received pose
