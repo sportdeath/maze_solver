@@ -48,7 +48,7 @@ class Safety():
         self.pub = rospy.Publisher("/vesc/low_level/ackermann_cmd_mux/input/safety",\
                 AckermannDriveStamped, queue_size =1 )
 
-        self.max_distance = 1
+        self.max_distance = .05
                 
         rospy.loginfo("Safety node initialized")
 

@@ -156,8 +156,7 @@ class RRT:
         return newState, False, -1
 
     def getRandomState(self, states, backwards):
-        choice = np.random.rand()
-        if choice < self.gaussianProbability:
+        if len(states) > 0 and np.random.rand() < self.gaussianProbability:
             # Choose state
             index = np.random.randint(len(states))
             state = states[index]

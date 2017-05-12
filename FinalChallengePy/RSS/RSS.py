@@ -45,7 +45,6 @@ class RSS(VisualizeLine):
         self.state = RobotState(-1,0,3.14)
 
         self.drive = True
-        self.firstLocalizationData = False
 
         # Load the points from file
         self.steers = pickle.load(open(BIG_PATH_FILE, 'rb'))
@@ -116,87 +115,22 @@ class RSS(VisualizeLine):
         # Move state backwards
         self.state.lidarToRearAxle()
 
-        if not self.firstLocalizationData:
-            rospy.loginfo("planning path to goal")
+        if self.trajectoryTracker.outOfBounds:
+            self.replanPath()
 
-            bestGoal, _ = self.RRT.computePath(
-                    self.state, 
-                    self.steers[0].getGoalState())
-
-            if bestGoal < 0:
-                rospy.loginfo("No path found")
-
-            else:
-                rospy.loginfo("Path found")
-                newSteers = self.RRT.getSteers()
-
-                # Replace the path
-                self.steers[0:bestGoal+1] = newSteers
-
-                # redo the trajectory tracker
-                path = self.steersToPath(self.steers)
-                self.trajectoryTracker = TrajectoryTracker(path)
-
-                self.firstLocalizationData = True
-
-                # Visualize the change
-                self.visualizePoints(path[0][0])
-
-        if self.firstLocalizationData and self.drive:
+        if self.drive:
             self.trajectoryTracker.publishCommand(self.state, self.commandPub, self.goalPointVisualizer)
 
-    '''
-    recalculate the path to circle around
-    point in the specified direction
-    '''
-    def planAroundPoint(self, point, direction):
-        fakeWall = FakeWall(
-                point, 
-                self.state.getOrientation(), 
-                direction, 
-                self.rangeMethod
-                )
-
-        # update the fake walls
-
-        # test to see if is already in the list
-        isNew = True
-        for index, f in enumerate(self.fakeWalls):
-            if np.linalg.norm(f.point - fakeWall.point) < CONE_DISTANCE_THRESHOLD:
-                # if it is, update it
-                self.fakeWalls[index] = fakeWall
-                isNew = False
-                break
-
-        # if it is not, add and pop!
-        if isNew:
-            self.fakeWalls.append(fakeWall)
-
-        # clear ones that are behind the car
-        for index, f in enumerate(self.fakeWalls):
-            if LocalGlobalUtils.globalToLocal(self.state, f.point)[1] < 0:
-                self.fakeWalls.pop(index)
-
-        self.visualizeFakeWalls(self.fakeWalls)
-
-        # Find the first section which intersects the fake wall path 
-        badSteerIndex = -1
-        badSteer = None
-        for index, steer in enumerate(self.steers):
-            if steer.intersects(fakeWall.getLine()):
-                badSteerIndex = index
-                badSteer = steer
-                break
-
+    def replanPath(self, badSteerIndex = 0):
         # If there is no intersection don't do anything!
         if badSteerIndex < 0:
             return
 
-        rospy.loginfo("Planning path around cone")
+        rospy.loginfo("Replanning path")
 
         # Otherwise we must compute a new path
         # Stop driving!
-        self.drive = False
+        #self.drive = False
 
         goalStates = [self.steers[i].getGoalState() for i in xrange(badSteerIndex, len(self.steers))]
 
@@ -228,7 +162,56 @@ class RSS(VisualizeLine):
         self.visualizePoints(path[0][0])
 
         # Continue driving
-        self.drive = True
+        #self.drive = True
+
+    '''
+    recalculate the path to circle around
+    point in the specified direction
+    '''
+    def planAroundPoint(self, point, direction):
+        fakeWall = FakeWall(
+                point, 
+                self.state.getOrientation(), 
+                direction, 
+                self.rangeMethod
+                )
+
+        # update the fake walls
+
+        # test to see if is already in the list
+        isNew = True
+        for index, f in enumerate(self.fakeWalls):
+            if np.linalg.norm(f.point - fakeWall.point) < CONE_DISTANCE_THRESHOLD:
+                # if it is, update it
+                self.fakeWalls[index] = fakeWall
+                isNew = False
+                break
+
+        # if it is not, add and pop!
+        if isNew:
+            self.fakeWalls.append(fakeWall)
+
+        # clear ones that are behind the car
+        # or very far away
+        # or of negligible length
+        for index, f in enumerate(self.fakeWalls):
+            if LocalGlobalUtils.globalToLocal(self.state, f.point)[1] < 0 or\
+                    np.linalg.norm(f.point - self.state.getPosition()) > CONE_VISIBILITY_THRESHOLD or \
+                    f.distance < MIN_FAKE_WALL_DISTANCE:
+                self.fakeWalls.pop(index)
+
+        self.visualizeFakeWalls(self.fakeWalls)
+
+        # Find the first section which intersects the fake wall path 
+        badSteerIndex = -1
+        badSteer = None
+        for index, steer in enumerate(self.steers):
+            if steer.intersects(fakeWall.getLine()):
+                badSteerIndex = index
+                badSteer = steer
+                break
+
+        self.replanPath(badSteerIndex)
 
     def visualizePoints(self, points):
         self.visualize(points,(0.,1.,0.),publisherIndex=0)

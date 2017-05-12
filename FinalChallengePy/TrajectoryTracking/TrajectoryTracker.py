@@ -16,6 +16,7 @@ class TrajectoryTracker:
         self.pointIndex = 0
         self.pathIndex = 0
         self.isComplete = False
+        self.outOfBounds = False
 
     """
     returns (velocity, angle)
@@ -29,11 +30,13 @@ class TrajectoryTracker:
         points = path[0]
         backwards = path[1]
 
-        goalPointGlobal, self.pointIndex = PurePursuit.pickClosestPoint(
+        goalPointGlobal, self.pointIndex, outOfBounds = PurePursuit.pickClosestPoint(
                 state.getPosition(), 
                 LOOK_AHEAD_DISTANCE_SQUARED,
                 points,
                 self.pointIndex)
+
+        self.outOfBounds = outOfBounds
 
         # If we are at the end!
         if self.pointIndex == len(points) - 1:

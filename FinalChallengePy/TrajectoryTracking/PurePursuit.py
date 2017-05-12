@@ -41,7 +41,7 @@ class PurePursuit:
         prevDifferenceNormSquared = np.dot(prevDifference, prevDifference)
 
         if prevDifferenceNormSquared >= lookAheadDistSquared:
-            return (points[prevIndex], prevIndex)
+            return (points[prevIndex], prevIndex, True)
 
         for i in xrange(prevIndex + 1, len(points)):
             difference = points[i] - position
@@ -56,10 +56,10 @@ class PurePursuit:
 
                 interpolated = points[i] + root * differenceBetweenPoints
 
-                point = (interpolated, i - 1)
+                point = (interpolated, i - 1, False)
                 break
 
         if not point:
-            point = (points[-1], len(points) - 1)
+            point = (points[-1], len(points) - 1, False)
         
         return point
