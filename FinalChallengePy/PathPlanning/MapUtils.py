@@ -29,7 +29,7 @@ class MapUtils:
         THETA_DISCRETIZATION = 200
         rangeLib = range_libc.PyCDDTCast(oMap, MAX_RANGE_PX, THETA_DISCRETIZATION)
         rospy.loginfo("pruning...")
-        rangeLib.prune()
+        # rangeLib.prune()
         rospy.loginfo("range_libc initialized")
         return rangeLib
 

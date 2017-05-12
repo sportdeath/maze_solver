@@ -80,25 +80,36 @@ class ConeTracking:
         # publish rosmsg 
         self.pubImage.publish(image_ros_msg)
 
+        cones = []
+
         if redThreshold.doesExist():
-            redCone = Cone(redThreshold.getBottomCenterPoint())
-            if np.linalg.norm(redCone.getPosition()) < CONE_VISIBILITY_THRESHOLD:
-                self.updateCones(redCone, self.redCones, RED_CONE_DIRECTION)
+            redCone = Cone(redThreshold.getBottomCenterPoint(), RED_CONE_DIRECTION)
+            if (redCone.getPosition()[1] > 0):
+                cones.append(redCone)
 
         if greenThreshold.doesExist():
-            greenCone = Cone(greenThreshold.getBottomCenterPoint())
-            if np.linalg.norm(greenCone.getPosition()) < CONE_VISIBILITY_THRESHOLD:
-                self.updateCones(greenCone, self.greenCones, GREEN_CONE_DIRECTION)
+            greenCone = Cone(greenThreshold.getBottomCenterPoint(), GREEN_CONE_DIRECTION)
+            if (greenCone.getPosition()[1] > 0):
+                cones.append(greenCone)
+
+        bestCone = None
+        bestConeDistance = np.inf
+        for cone in cones:
+            distance = np.linalg.norm(cone.getPosition())
+            if distance < bestConeDistance:
+                bestCone = cone
+                bestConeDistance = distance
+
+        if bestCone is not None:
+            self.sendConeMsg(bestCone)
     
-    def updateCones(self, cone, cones, direction):
-        #if cone.isNewCone(cones):
+    def sendConeMsg(self, cone):
         msg = ConeInfo()
-        msg.direction = direction
+        msg.direction = cone.getDirection()
         worldCoordinates = cone.getPosition()
         msg.location.x = worldCoordinates[0]
         msg.location.y = worldCoordinates[1]
         self.pubConeInfo.publish(msg)
-        # cones.append(cone)
 
 if __name__=="__main__":
     rospy.init_node('ConeTracking')

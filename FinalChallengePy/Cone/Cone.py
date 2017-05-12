@@ -10,16 +10,12 @@ from geometry_msgs.msg import Point
 from FinalChallengePy.Cone.Constants import *
 
 class Cone:
-    def __init__(self, conePixels):
+    def __init__(self, conePixels, direction):
         self.position = CoordinateTransformations.pixelsToLocal(conePixels)
+        self.direction = direction
 
     def getPosition(self):
         return self.position
 
-    def isNewCone(self, cones):
-        for cone in cones:
-            distance = np.linalg.norm(self.getPosition() - cone.getPosition())
-            if distance < DISTANCE_THRESHOLD:
-                return False
-
-        return True
+    def getDirection(self):
+        return self.direction
