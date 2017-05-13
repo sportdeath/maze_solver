@@ -12,6 +12,8 @@ from FinalChallengePy.PathPlanning.RRT import RRT
 from FinalChallengePy.TrajectoryTracking.TrajectoryTracker import TrajectoryTracker
 from FinalChallengePy.TrajectoryTracking.Constants import *
 
+from FinalChallengePy.Colors import *
+
 class Parking(VisualizeLine):
     def __init__(self):
         VisualizeLine.__init__(self,"Parking",numPublishers=3)
@@ -68,12 +70,12 @@ class Parking(VisualizeLine):
                 self.RRT.reverse()
 
             # Visualize the tree
-            self.visualize(self.RRT.treeToLineList(tree),(0.,0.,1.),publisherIndex=2,lineList=True)
+            self.visualize(self.RRT.treeToLineList(tree),WHITE,publisherIndex=2,lineList=True)
 
             if bestGoalIndex >= 0:
                 (forwardPoints, backwardsPoints) = self.RRT.getLineLists()
-                self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=0,lineList=True)
-                self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)
+                self.visualize(forwardPoints,BLUE,publisherIndex=0,lineList=True)
+                self.visualize(backwardsPoints,RED,publisherIndex=1,lineList=True)
 
                 # follow the path to that tree
                 self.trajectoryTracker = TrajectoryTracker(self.RRT.getPoints(self.RRT.getPath(),True,LOOK_AHEAD_DISTANCE))
@@ -85,8 +87,8 @@ class Parking(VisualizeLine):
             r.sleep()
         
         while not (rospy.is_shutdown() or self.trajectoryTracker.isPathComplete()):
-            self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=0,lineList=True)
-            self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)
+            self.visualize(forwardPoints,BLUE,publisherIndex=0,lineList=True)
+            self.visualize(backwardsPoints,RED,publisherIndex=1,lineList=True)
             r.sleep()
 
     def park(self):
@@ -104,7 +106,7 @@ class Parking(VisualizeLine):
         rospy.loginfo("Finished unparking")
 
     def goalPointVisualizer(self, points):
-        self.visualize(points,(0.,0.,1.),publisherIndex=2,lineList=True)
+        self.visualize(points,GREY,publisherIndex=2,lineList=True)
 
     def gotLocalizationData(self, msg):
         x = msg.pose.position.x
