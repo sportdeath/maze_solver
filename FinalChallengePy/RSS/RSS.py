@@ -27,6 +27,8 @@ from FinalChallengePy.TrajectoryTracking.Constants import *
 
 from FinalChallengePy.Cone.Constants import RED_CONE_DIRECTION
 
+from FinalChallengePy.Colors import *
+
 class RSS(VisualizeLine):
     def __init__(self):
         VisualizeLine.__init__(self,"RSS",numPublishers=4)
@@ -86,7 +88,7 @@ class RSS(VisualizeLine):
         lineList = []
         for fakeWall in fakeWalls:
             lineList += fakeWall.getLine()
-        self.visualize(lineList, (1., 1., 0.), publisherIndex=2, lineList = True)
+        self.visualize(lineList, WHITE, publisherIndex=2, lineList = True)
 
     def clickedPoint(self, msg):
         x = msg.point.x
@@ -103,7 +105,7 @@ class RSS(VisualizeLine):
         self.planAroundPoint(pointGlobal, direction)
 
     def goalPointVisualizer(self, points):
-        self.visualize(points,(0.,0.,1.),publisherIndex=1,lineList=True)
+        self.visualize(points,GREY,publisherIndex=1,lineList=True)
 
     def gotLocalizationData(self, msg):
         x = msg.pose.position.x
@@ -141,7 +143,7 @@ class RSS(VisualizeLine):
                 sampleStates = [f.getSampleCenter() for f in self.fakeWalls],
                 multipleGoals = True)
 
-        self.visualize(self.RRT.treeToLineList(tree),(0.,0.,0.7),publisherIndex=3,lineList=True)
+        self.visualize(self.RRT.treeToLineList(tree),RED,publisherIndex=3,lineList=True)
 
         if bestGoal < 0:
             rospy.loginfo("No path found")
@@ -214,7 +216,7 @@ class RSS(VisualizeLine):
         self.replanPath(badSteerIndex)
 
     def visualizePoints(self, points):
-        self.visualize(points,(0.,1.,0.),publisherIndex=0)
+        self.visualize(points,BLUE,publisherIndex=0)
 
     @staticmethod
     def steersToPath(steers):
