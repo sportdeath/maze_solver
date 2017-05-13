@@ -33,7 +33,7 @@ class VisualizeLine:
             lineStrip.type = Marker.LINE_STRIP
         lineStrip.action = Marker.ADD
         lineStrip.header = header
-        lineStrip.scale.x = 0.1
+        lineStrip.scale.x = 0.03
         lineStrip.pose.orientation.w = 1.
         lineStrip.color.a = 1.
         lineStrip.color.r = color[0]

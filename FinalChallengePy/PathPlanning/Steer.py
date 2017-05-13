@@ -79,7 +79,8 @@ class Steer:
         # of the goal circle
         circleNorm = self.goalCircleCenter - self.initCircleCenter
         circleDistance = np.linalg.norm(circleNorm)
-        circleNorm /= circleDistance
+        if circleDistance != 0:
+            circleNorm /= circleDistance
 
         # Are we turning the same way?
         if self.initSide == self.goalSide:
@@ -110,7 +111,8 @@ class Steer:
         # is given by the path norm and length
         self.lineNorm = self.goalTangentPoint - self.initTangentPoint
         self.lineLength = np.linalg.norm(self.lineNorm)
-        self.lineNorm /= self.lineLength
+        if self.lineLength != 0:
+            self.lineNorm /= self.lineLength
 
         # These are the norms to the start and end positions
         initNorm = (init.getPosition() - self.initCircleCenter)/MIN_RADIUS
@@ -366,9 +368,8 @@ class Steer:
 
         minLength = CAR_REAR_LENGTH + length + CAR_FORWARD_LENGTH
 
-        for side in [-1., 1.]:
+        for side in [-1., 0, 1.]:
             backWheel = (side * horizontalOffset) + verticalOffset + center
-        
             distanceToObstacle = rangeMethod(backWheel, angle)
             if distanceToObstacle < minLength:
                 return False

@@ -5,9 +5,9 @@ import numpy as np
 from geometry_msgs.msg import PoseStamped
 from ackermann_msgs.msg import AckermannDriveStamped
 
-from FinalChallengePy.PathPlanning.MapUtils import MapUtils
-from FinalChallengePy.PathPlanning.RobotState import RobotState
-from FinalChallengePy.PathPlanning.VisualizeLine import VisualizeLine
+from FinalChallengePy.Utils.MapUtils import MapUtils
+from FinalChallengePy.Utils.RobotState import RobotState
+from FinalChallengePy.Utils.VisualizeLine import VisualizeLine
 from FinalChallengePy.PathPlanning.RRT import RRT
 from FinalChallengePy.TrajectoryTracking.TrajectoryTracker import TrajectoryTracker
 from FinalChallengePy.TrajectoryTracking.Constants import *
@@ -19,19 +19,19 @@ class Parking(VisualizeLine):
         self.mapMsg = MapUtils.getMap()
         self.RRT = RRT(
                 self.mapMsg,
-                maxIterations = 1000,
-                numOptimizations = 1000, 
-                verbose = False, 
-                gaussianProbability = 0.9,
-                positionStdDev = 0.1,
-                angleStdDev = 0.1)
+                maxIterations = 4000,
+                numOptimizations = 0, 
+                verbose = True, 
+                miniSteerProbability = 0.9,
+                miniSteerAngleStdDev = 0.1,
+                miniSteerLengthStdDev = 0.1)
 
         self.state = RobotState(0,0,0)
 
         self.trajectoryTracker = None
         self.numCompletedSegments = 0
 
-        self.parkedState = RobotState(-1.3, -3.3, 0)
+        self.parkedState = RobotState(-1.34, -3.48, 0)
         self.unparkedState = RobotState(0,0,0)
 
         self.poseSub = rospy.Subscriber(
@@ -47,23 +47,34 @@ class Parking(VisualizeLine):
 
         rospy.sleep(3)
         rospy.loginfo("Initialized Parking")
+        
+        # Wait for lidar messages
+        rospy.sleep(2)
 
-    def goToState(self, goal):
+        parking.park()
+        parking.unpark()
 
-        rospy.loginfo("Planning path from " + str(self.state.getPosition()) + " to " + str(goal.getPosition()))
+    def goToState(self, init, goal, planBackwards = False):
+
+        rospy.loginfo("Planning path from " + str(init.getPosition()) + " to " + str(goal.getPosition()))
 
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
+            if planBackwards:
+                init, goal = goal, init
+
             bestGoalIndex, tree = self.RRT.computePath(
-                    self.state, 
+                    init, 
                     goal, 
-                    backwards=True,
-                    sampleStates = [goal])
+                    backwards=True)
+
+            if planBackwards:
+                self.RRT.reverse()
 
             # Visualize the tree
             self.visualize(self.RRT.treeToLineList(tree),(0.,0.,1.),publisherIndex=2,lineList=True)
 
-            if bestGoalIndex > 0:
+            if bestGoalIndex >= 0:
                 (forwardPoints, backwardsPoints) = self.RRT.getLineLists()
                 self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=0,lineList=True)
                 self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)
@@ -77,8 +88,9 @@ class Parking(VisualizeLine):
             rospy.loginfo("Path not found :(")
             r.sleep()
         
-        while not rospy.is_shutdown() and not self.trajectoryTracker.isPathComplete():
-            rospy.loginfo("travelling...")
+        while not (rospy.is_shutdown() or self.trajectoryTracker.isPathComplete()):
+            self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=0,lineList=True)
+            self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)
             r.sleep()
 
         self.numCompletedSegments += 1
@@ -87,14 +99,14 @@ class Parking(VisualizeLine):
     def park(self):
         rospy.loginfo("Parking...")
 
-        self.goToState(self.parkedState)
+        self.goToState(self.state, self.parkedState, planBackwards = True)
 
         rospy.loginfo("Finished parking")
 
     def unpark(self):
         rospy.loginfo("Unparking...")
 
-        self.goToState(self.unparkedState)
+        self.goToState(self.parkedState, self.unparkedState)
 
         rospy.loginfo("Finished unparking")
 
@@ -117,8 +129,6 @@ class Parking(VisualizeLine):
 if __name__=="__main__":
     rospy.init_node("Parking")
     parking = Parking()
-    if parking.numCompletedSegments < 2:
-        parking.park()
-    else:
-        parking.unpark()
+    parking.park()
+    parking.unpark()
     rospy.spin()
