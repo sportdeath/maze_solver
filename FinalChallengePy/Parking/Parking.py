@@ -19,8 +19,8 @@ class Parking(VisualizeLine):
         self.mapMsg = MapUtils.getMap()
         self.RRT = RRT(
                 self.mapMsg,
-                maxIterations = 300,
-                numOptimizations = 0, 
+                maxIterations = 1000,
+                numOptimizations = 1000, 
                 verbose = False, 
                 gaussianProbability = 0.9,
                 positionStdDev = 0.1,
@@ -30,7 +30,7 @@ class Parking(VisualizeLine):
 
         self.trajectoryTracker = None
 
-        self.parkedState = RobotState(-1.62, -3.5, 0)
+        self.parkedState = RobotState(-1.3, -3.3, 0)
         self.unparkedState = RobotState(0,0,0)
 
         self.poseSub = rospy.Subscriber(
@@ -44,8 +44,7 @@ class Parking(VisualizeLine):
                 AckermannDriveStamped,
                 queue_size = 1)
 
-        self.park()
-        self.unpark()
+        rospy.sleep(3)
 
     def goToState(self, goal):
 
@@ -114,4 +113,6 @@ class Parking(VisualizeLine):
 if __name__=="__main__":
     rospy.init_node("Parking")
     parking = Parking()
+    parking.park()
+    parking.unpark()
     rospy.spin()
