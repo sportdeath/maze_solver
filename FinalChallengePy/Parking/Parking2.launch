@@ -1,9 +1,0 @@
-<launch>
-	<arg name="parking_point" default="[5, 5, 0]"/>
-	<arg name="exit_point" default="[8, 8, 0]"/>
-
-	<node name="Parking" pkg="final_challenge" type="Parking.py" output="screen">
-		<param name="parking_point" value="$(arg parking_point)"/>
-		<param name="exit_point" value="$(arg exit_point)"/>
-	</node>
-</launch>

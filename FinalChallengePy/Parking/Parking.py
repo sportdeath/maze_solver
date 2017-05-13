@@ -17,18 +17,21 @@ class Parking(VisualizeLine):
         VisualizeLine.__init__(self,"Parking",numPublishers=3)
 
         self.mapMsg = MapUtils.getMap()
-        self.RRT = RRT(self.mapMsg)
+        self.RRT = RRT(
+                self.mapMsg,
+                maxIterations = 300,
+                numOptimizations = 0, 
+                verbose = False, 
+                gaussianProbability = 0.9,
+                positionStdDev = 0.1,
+                angleStdDev = 0.1)
 
         self.state = RobotState(0,0,0)
 
         self.trajectoryTracker = None
 
-        self.parkingPoint = rospy.get_param("~parking_point")
-        self.exitPoint = rospy.get_param("~exit_point")
-
-        self.wayPoints = np.array([self.parkingPoint, self.exitPoint])
-        self.segmentsComplete = np.zeros(self.wayPoints.shape[0], dtype=bool)
-        self.currentSegmentIndex = 0
+        self.parkedState = RobotState(-1.62, -3.5, 0)
+        self.unparkedState = RobotState(0,0,0)
 
         self.poseSub = rospy.Subscriber(
                 "/pf/viz/inferred_pose", 
@@ -41,7 +44,56 @@ class Parking(VisualizeLine):
                 AckermannDriveStamped,
                 queue_size = 1)
 
-        self.parking()
+        self.park()
+        self.unpark()
+
+    def goToState(self, goal):
+
+        rospy.loginfo("Planning path from " + str(self.state.getPosition()) + " to " + str(goal.getPosition()))
+
+        r = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            bestGoalIndex, tree = self.RRT.computePath(
+                    self.state, 
+                    goal, 
+                    backwards=True,
+                    sampleStates = [goal])
+
+            # Visualize the tree
+            self.visualize(self.RRT.treeToLineList(tree),(0.,0.,1.),publisherIndex=2,lineList=True)
+
+            if bestGoalIndex > 0:
+                (forwardPoints, backwardsPoints) = self.RRT.getLineLists()
+                self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=0,lineList=True)
+                self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)
+
+                # follow the path to that tree
+                self.trajectoryTracker = TrajectoryTracker(self.RRT.getPoints(self.RRT.getPath(),True,LOOK_AHEAD_DISTANCE))
+
+                rospy.loginfo("Path planning complete")
+                break
+
+            rospy.loginfo("Path not found :(")
+            r.sleep()
+        
+        while not rospy.is_shutdown() or not self.trajectoryTracker.isPathComplete():
+            r.sleep()
+
+        self.complete = False
+
+    def park(self):
+        rospy.loginfo("Parking...")
+
+        self.goToState(self.parkedState)
+
+        rospy.loginfo("Finished parking")
+
+    def unpark(self):
+        rospy.loginfo("Unparking...")
+
+        self.goToState(self.unparkedState)
+
+        rospy.loginfo("Finished unparking")
 
     def goalPointVisualizer(self, points):
         self.visualize(points,(0.,0.,1.),publisherIndex=2,lineList=True)
@@ -58,52 +110,6 @@ class Parking(VisualizeLine):
 
         if self.trajectoryTracker:
             self.trajectoryTracker.publishCommand(self.state, self.commandPub, self.goalPointVisualizer)
-
-    def goToPoint(self, point):
-        goalState = RobotState(float(point[0]), float(point[1]), float(point[2]))
-
-        # Visualize the tree
-        rospy.loginfo("Planning path from " + str(self.state.getPosition()) + " to " + str(goalState.getPosition()))
-        tree = self.RRT.computePath(self.state, goalState, backwards=True)
-        (forwardPoints, backwardsPoints) = self.RRT.getLineLists()
-        self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=0,lineList=True)
-        self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)
-        rospy.loginfo("Path planning complete")
-
-        # follow the path to that tree
-        self.trajectoryTracker = TrajectoryTracker(self.RRT.getPoints(self.RRT.getPath(),True,LOOK_AHEAD_DISTANCE))
-        self.segmentsComplete[self.currentSegmentIndex] = self.TrajectoryTracker.isPathComplete()
-
-    def parking(self):
-        rospy.loginfo("Parking...")
-
-        if self.segmentsComplete[self.currentSegmentIndex]:
-            self.currentSegmentIndex += 1
-
-        if self.currentSegmentIndex >= len(self.segmentsComplete):
-            rospy.loginfo("Finished parking challenge")
-            return
-
-        self.goToPoint(self.wayPoints[self.currentSegmentIndex])
-
-    def clickedPose(self, msg):
-        # The received pose
-        x = msg.pose.position.x
-        y = msg.pose.position.y
-        theta = MapUtils.quaternionToAngle(msg.pose.orientation)
-
-        goalState = RobotState(x, y, theta)
-
-        # Visualize the tree
-        rospy.loginfo("Planning path from " + str(self.state.getPosition()) + " to " + str(goalState.getPosition()))
-        tree = self.RRT.computePath(self.state, goalState, backwards=True)
-        (forwardPoints, backwardsPoints) = self.RRT.getLineLists()
-        self.visualize(forwardPoints,(0.,1.,0.),publisherIndex=0,lineList=True)
-        self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)
-        rospy.loginfo("Path planning complete")
-
-        # follow the path to that tree
-        self.trajectoryTracker = TrajectoryTracker(self.RRT.getPoints(self.RRT.getPath(),True,LOOK_AHEAD_DISTANCE))
 
 if __name__=="__main__":
     rospy.init_node("Parking")
