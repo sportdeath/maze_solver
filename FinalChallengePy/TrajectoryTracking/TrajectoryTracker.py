@@ -40,7 +40,11 @@ class TrajectoryTracker:
 
         # If we are at the end!
         if self.pointIndex == len(points) - 1:
+            rospy.loginfo("At last index")
+            rospy.loginfo(np.linalg.norm(goalPointGlobal - state.getPosition()))
+            rospy.loginfo(LOOK_AHEAD_DISTANCE)
             if np.linalg.norm(goalPointGlobal - state.getPosition()) <= LOOK_AHEAD_DISTANCE:
+                rospy.loginfo("done with path")
                 self.pathIndex += 1
                 self.pointIndex = 0
                 self.isComplete = True

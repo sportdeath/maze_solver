@@ -29,6 +29,7 @@ class Parking(VisualizeLine):
         self.state = RobotState(0,0,0)
 
         self.trajectoryTracker = None
+        self.numCompletedSegments = 0
 
         self.parkedState = RobotState(-1.3, -3.3, 0)
         self.unparkedState = RobotState(0,0,0)
@@ -45,6 +46,7 @@ class Parking(VisualizeLine):
                 queue_size = 1)
 
         rospy.sleep(3)
+        rospy.loginfo("Initialized Parking")
 
     def goToState(self, goal):
 
@@ -75,10 +77,12 @@ class Parking(VisualizeLine):
             rospy.loginfo("Path not found :(")
             r.sleep()
         
-        while not rospy.is_shutdown() or not self.trajectoryTracker.isPathComplete():
+        while not rospy.is_shutdown() and not self.trajectoryTracker.isPathComplete():
+            rospy.loginfo("travelling...")
             r.sleep()
 
-        self.complete = False
+        self.numCompletedSegments += 1
+        rospy.loginfo("complete")
 
     def park(self):
         rospy.loginfo("Parking...")
@@ -113,6 +117,8 @@ class Parking(VisualizeLine):
 if __name__=="__main__":
     rospy.init_node("Parking")
     parking = Parking()
-    parking.park()
-    parking.unpark()
+    if parking.numCompletedSegments < 2:
+        parking.park()
+    else:
+        parking.unpark()
     rospy.spin()
