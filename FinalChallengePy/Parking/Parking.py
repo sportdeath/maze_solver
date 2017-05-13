@@ -29,7 +29,6 @@ class Parking(VisualizeLine):
         self.state = RobotState(0,0,0)
 
         self.trajectoryTracker = None
-        self.numCompletedSegments = 0
 
         self.parkedState = RobotState(-1.34, -3.48, 0)
         self.unparkedState = RobotState(0,0,0)
@@ -45,14 +44,11 @@ class Parking(VisualizeLine):
                 AckermannDriveStamped,
                 queue_size = 1)
 
-        rospy.sleep(3)
-        rospy.loginfo("Initialized Parking")
-        
         # Wait for lidar messages
         rospy.sleep(2)
 
-        parking.park()
-        parking.unpark()
+        self.park()
+        self.unpark()
 
     def goToState(self, init, goal, planBackwards = False):
 
@@ -93,9 +89,6 @@ class Parking(VisualizeLine):
             self.visualize(backwardsPoints,(1.,0.,0.),publisherIndex=1,lineList=True)
             r.sleep()
 
-        self.numCompletedSegments += 1
-        rospy.loginfo("complete")
-
     def park(self):
         rospy.loginfo("Parking...")
 
@@ -129,6 +122,4 @@ class Parking(VisualizeLine):
 if __name__=="__main__":
     rospy.init_node("Parking")
     parking = Parking()
-    parking.park()
-    parking.unpark()
     rospy.spin()
