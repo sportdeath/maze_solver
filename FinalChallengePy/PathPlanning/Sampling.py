@@ -1,6 +1,7 @@
 import numpy as np
 
 from FinalChallengePy.Utils.RobotState import RobotState
+from FinalChallengePy.PathPlanning.MiniSteer import MiniSteer
 
 class Sampling:
     @staticmethod
@@ -9,7 +10,7 @@ class Sampling:
         theta = np.random.normal(loc=state.getTheta(), scale=angleStdDev)
         
         if backwards:
-            backwards = bool(np.random.randomint(2))
+            backwards = bool(np.random.randint(2))
         
         return RobotState(x, y, theta, backwards)
     
@@ -25,3 +26,22 @@ class Sampling:
             backwards = bool(np.random.randint(2))
             
         return RobotState(position[0], position[1], theta, backwards)
+
+    @staticmethod
+    def getMiniState(state, angleStdDev, lengthStdDev, backwards=False):
+        angle0 = abs(np.random.normal(scale=angleStdDev))
+        angle1 = abs(np.random.normal(scale=angleStdDev))
+        length = abs(np.random.normal(scale=lengthStdDev))
+
+        side = 2*np.random.randint(2) - 1
+
+        if backwards:
+            backwards = bool(np.random.randint(2))
+
+        return MiniSteer.getMiniSteerState(
+            state, 
+            angle0, 
+            angle1, 
+            length,
+            side,
+            backwards)

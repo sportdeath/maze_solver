@@ -1,6 +1,0 @@
-<launch>
-	<node name="Parking" pkg="final_challenge" type="Parking.py" output="screen">
-		<rosparam param="parking_point">[3, 3, 0]</rosparam>
-        <rosparam param="exit_point">[10, 10, 0]</rosparam>
-	</node>
-</launch>
