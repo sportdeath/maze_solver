@@ -37,15 +37,10 @@ class TrajectoryTracker:
         self.outOfBounds = outOfBounds
 
         # If we are at the end!
-        if self.pointIndex == len(points) - 1:
-            rospy.loginfo("At last index")
-            rospy.loginfo(np.linalg.norm(goalPointGlobal - state.getPosition()))
-            rospy.loginfo(LOOK_AHEAD_DISTANCE)
-            if np.linalg.norm(goalPointGlobal - state.getPosition()) <= LOOK_AHEAD_DISTANCE:
-                rospy.loginfo("done with path")
-                self.pathIndex += 1
-                self.pointIndex = 0
-                return (0,0)
+        if np.linalg.norm(points[-1] - state.getPosition()) <= LOOK_AHEAD_DISTANCE + LOOK_AHEAD_BUFFER:
+            self.pathIndex += 1
+            self.pointIndex = 0
+            return (0,0)
 
         if visualizeMethod:
             TrajectoryTracker.visualize(state, goalPointGlobal, visualizeMethod)

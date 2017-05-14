@@ -21,18 +21,18 @@ class Parking(VisualizeLine):
         self.mapMsg = MapUtils.getMap()
         self.RRT = RRT(
                 self.mapMsg,
-                maxIterations = 4000,
+                maxIterations = 1500,
                 numOptimizations = 0, 
                 verbose = True, 
                 miniSteerProbability = 0.9,
-                miniSteerAngleStdDev = 0.1,
-                miniSteerLengthStdDev = 0.1)
+                miniSteerAngleStdDev = 0.2,
+                miniSteerLengthStdDev = 0.005)
 
         self.state = RobotState(0,0,0)
 
         self.trajectoryTracker = None
 
-        self.parkedState = RobotState(-1.34, -3.48, 0)
+        self.parkedState = RobotState(-1.2, -3.42, 0)
         self.unparkedState = RobotState(0,0,0)
 
         self.poseSub = rospy.Subscriber(
@@ -56,10 +56,11 @@ class Parking(VisualizeLine):
 
         rospy.loginfo("Planning path from " + str(init.getPosition()) + " to " + str(goal.getPosition()))
 
+        if planBackwards:
+            init, goal = goal, init
+
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
-            if planBackwards:
-                init, goal = goal, init
 
             bestGoalIndex, tree = self.RRT.computePath(
                     init, 

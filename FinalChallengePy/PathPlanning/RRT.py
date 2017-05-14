@@ -166,7 +166,7 @@ class RRT:
 
         random = np.random.rand()
 
-        if random < self.gaussianProbability:
+        if random < self.gaussianProbability and len(sampleStates) > 0:
             choice = 1
         elif random < self.gaussianProbability + self.miniSteerProbability:
             choice = 2
@@ -194,7 +194,7 @@ class RRT:
         elif choice == 1:
             # Choose state
             index = np.random.randint(len(sampleStates))
-            state = states[index]
+            state = sampleStates[index]
 
             # draw from Gaussian around it
             return Sampling.getGaussianState(state, self.gaussianPositionStdDev, self.gaussianAngleStdDev)
