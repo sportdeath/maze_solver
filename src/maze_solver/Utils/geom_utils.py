@@ -1,9 +1,29 @@
 import numpy as np
 
+import tf
+from geometry_msgs.msg import Quaternion
+
 class GeomUtils:
     """
     Useful methods for geometry in 2D.
     """
+
+    @staticmethod
+    def quaternion_to_angle(q):
+        """
+        Convert a quaternion ROS message into an angle in radians.
+        """
+        x, y, z, w = q.x, q.y, q.z, q.w
+        roll, pitch, yaw = tf.transformations.euler_from_quaternion((x, y, z, w))
+
+        return yaw
+
+    @staticmethod
+    def angle_to_quaternion(angle):
+        """
+        Convert an angle in radians into a quaternion ROS message.
+        """
+        return Quaternion(*tf.transformations.quaternion_from_euler(0, 0, angle))
 
     @staticmethod
     def get_angle(vector):

@@ -19,7 +19,7 @@ class TestVisualizationUtils:
         self.line_pub = rospy.Publisher(
                 "/line", 
                 Marker,
-                queue_size = 1)
+                queue_size=1)
 
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
