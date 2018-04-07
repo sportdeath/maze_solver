@@ -10,7 +10,7 @@ Install [```pydubins```](https://github.com/AndrewWalker/pydubins) through pip.
     
 ### Cartographer
 
-For the latest instructions check the [```cartographer_ros``` docs](https://google-cartographer-ros.readthedocs.io/en/latest/).
+[Install cartographer](https://google-cartographer-ros.readthedocs.io/en/latest/):
 
     # Install ninja
     sudo apt-get install ninja-build
@@ -35,3 +35,7 @@ For the latest instructions check the [```cartographer_ros``` docs](https://goog
     # Build and install.
     catkin_make_isolated --install --use-ninja
     source install_isolated/setup.bash
+
+Then install the racecar configuration files:
+
+    maze_solver/cartographer_config/install.sh
