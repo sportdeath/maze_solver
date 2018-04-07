@@ -15,9 +15,12 @@ For the latest instructions check the [```cartographer_ros``` docs](https://goog
     # Install ninja
     sudo apt-get install ninja-build
     
-    # Fetch cartographer_ros
-    cd ~/racecar_ws
+    # Make a workspace for cartographer
+    mkdir ~/cartographer_ws
+    cd ~/cartographer_ws
     wstool init src
+    
+    # Fetch cartographer_ros
     wstool merge -t src https://raw.githubusercontent.com/googlecartographer/cartographer_ros/master/cartographer_ros.rosinstall
     wstool update -t src
     
@@ -25,6 +28,7 @@ For the latest instructions check the [```cartographer_ros``` docs](https://goog
     src/cartographer/scripts/install_proto3.sh
     
     # Install deb dependencies
+    sudo rosdep init
     rosdep update
     rosdep install --from-paths src --ignore-src --rosdistro=${ROS_DISTRO} -y
     
