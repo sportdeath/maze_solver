@@ -7,8 +7,8 @@ import rospy
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import PoseStamped
 
-from maze_solver.Utils.visualization_utils import VisualizationUtils
-from maze_solver.Utils.geom_utils import GeomUtils
+from maze_solver.utils.visualization_utils import VisualizationUtils
+from maze_solver.utils.geom_utils import GeomUtils
 
 class TestDubinsPath:
 

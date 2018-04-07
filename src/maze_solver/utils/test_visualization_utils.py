@@ -10,7 +10,7 @@ import numpy as np
 import rospy
 from visualization_msgs.msg import Marker
 
-from maze_solver.Utils.visualization_utils import VisualizationUtils
+from maze_solver.utils.visualization_utils import VisualizationUtils
 
 class TestVisualizationUtils:
 
