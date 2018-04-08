@@ -4,7 +4,7 @@ from visualization_msgs.msg import Marker
 class VisualizationUtils:
 
     @staticmethod
-    def plot(x, y, publisher, color=(1., 0., 0.), frame="/base_link"):
+    def plot(x, y, publisher, color=(1., 0., 0.), frame="base_link", marker_type=Marker.LINE_STRIP):
         """
         Publishes the points (x, y) to publisher
         so they can be visualized in rviz as
@@ -21,7 +21,7 @@ class VisualizationUtils:
         """
         # Construct a line
         line_strip = Marker()
-        line_strip.type = Marker.LINE_STRIP
+        line_strip.type = marker_type
         line_strip.header.frame_id = frame
 
         # Set the size and color
