@@ -15,12 +15,15 @@ from maze_solver.utils.visualization_utils import VisualizationUtils
 class RRT:
 
     NUM_NEAREST = 10
-    MAX_RADIUS = 30.
+    MAX_RADIUS = 20.
     MIN_TURNING_RADIUS = 1.
     PATH_VIZ_TOPIC = "/path_viz"
+    TREE_VIZ_TOPIC = "/tree_viz"
     CARTOGRAPHER_FRAME = "cartographer_map"
 
     def __init__(self):
+        self.nodes = []
+        self.node_index = 0
         self.rtree = rtree_index.Index()
 
         self.root = RRTNode(self.MAX_RADIUS)
@@ -37,6 +40,10 @@ class RRT:
                 self.PATH_VIZ_TOPIC,
                 Marker,
                 queue_size=1)
+        self.tree_viz_pub = rospy.Publisher(
+                self.TREE_VIZ_TOPIC,
+                Marker,
+                queue_size=1)
 
         self.map_msg = None
         self.map_sub = rospy.Subscriber(
@@ -46,13 +53,15 @@ class RRT:
                 queue_size=1)
 
         self.num_rewires = 0
-        self.num_inserts = 0
 
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
             if self.map_msg is not None:
                 self.iterate()
-                self.visualize()
+                self.visualize_path()
+                self.visualize_tree()
+                # if len(self.nodes) % 100 == 0:
+                    # print "inserts: ", len(self.nodes), "rewires: ", self.num_rewires
             else:
                 r.sleep()
 
@@ -61,26 +70,28 @@ class RRT:
         self.map_msg = msg
 
     def insert(self, rrt_node):
-        self.rtree.insert(0,
+        self.nodes.append(rrt_node)
+        self.rtree.insert(self.node_index,
                 (rrt_node.pose[0],
                  rrt_node.pose[1],
                  rrt_node.pose[0],
-                 rrt_node.pose[1]),
-                obj=rrt_node)
+                 rrt_node.pose[1]))
+        self.node_index += 1
 
     def nearest(self, rrt_node):
+        num_nearest = int(max(self.NUM_NEAREST * np.log(len(self.nodes)), 1))
         near = self.rtree.nearest((
             rrt_node.pose[0], 
             rrt_node.pose[1], 
             rrt_node.pose[0], 
             rrt_node.pose[1]), 
-            self.NUM_NEAREST,
-            objects=True)
+            num_nearest)
 
-        return [n.object for n in near]
+        return [self.nodes[i] for i in near]
 
     def grow_tree(self, x_rand, X_near):
-        cost_min = np.inf
+        total_cost_min = np.inf
+        cost_min = 0
         x_min = None
 
         for x_near in X_near:
@@ -89,19 +100,18 @@ class RRT:
             if not steer.intersects(self.map_msg):
 
                 # If it is compute the length
-                cost = steer.length() + x_near.cost
+                total_cost = steer.length() + x_near.total_cost()
                 
                 # Update the minimum
-                if cost < cost_min:
-                    cost_min = cost
+                if total_cost < total_cost_min:
+                    total_cost_min = total_cost
+                    cost_min = steer.length()
                     x_min = x_near
 
         # Add the min to the tree
         if x_min is not None:
             x_min.add_child(x_rand, cost_min)
             self.insert(x_rand)
-            self.num_inserts += 1
-            # print "inserts: ", self.num_inserts, "rewires: ", self.num_rewires
 
     def rewire(self, x_rand, X_near):
         for x_near in X_near:
@@ -109,10 +119,10 @@ class RRT:
             steer = DubinsSteer(x_rand.pose, x_near.pose, self.MIN_TURNING_RADIUS)
             if not steer.intersects(self.map_msg):
 
-                cost = steer.length() + x_rand.cost
+                total_cost = steer.length() + x_rand.total_cost()
 
-                if cost < x_near.cost:
-                    x_near.set_parent(x_rand, cost)
+                if total_cost < x_near.total_cost():
+                    x_near.set_parent(x_rand, steer.length())
                     self.num_rewires += 1
 
     def iterate(self):
@@ -127,11 +137,11 @@ class RRT:
             self.rewire(x_rand, X_near)
 
             if x_rand.radius() > self.MAX_RADIUS:
-                if x_rand.cost < self.goal.cost:
+                if x_rand.total_cost() < self.goal.total_cost():
                     self.goal = x_rand
-                    print "cost: ", self.goal.cost, "radius: ", self.goal.radius()
+                    print "cost: ", self.goal.total_cost(), "radius: ", self.goal.radius()
 
-    def visualize(self):
+    def visualize_path(self):
         if self.path_viz_pub.get_num_connections() > 0:
             if self.goal.parent is None:
                 return
@@ -146,28 +156,53 @@ class RRT:
             VisualizationUtils.plot(
                     points[:,0], points[:,1],
                     self.path_viz_pub, 
+                    color=(0.,1.,0.),
+                    frame=self.CARTOGRAPHER_FRAME,
+                    marker_type=Marker.POINTS)
+
+    def visualize_tree(self):
+        if self.tree_viz_pub.get_num_connections() > 0:
+            points = []
+            for node in self.nodes:
+                if node.parent is None:
+                    continue
+                steer = DubinsSteer(node.parent.pose, node.pose, self.MIN_TURNING_RADIUS)
+                points.append(steer.sample(0.2))
+            if len(points) == 0:
+                return
+            points = np.concatenate(points, axis=0)
+            VisualizationUtils.plot(
+                    points[:,0], points[:,1],
+                    self.tree_viz_pub, 
                     frame=self.CARTOGRAPHER_FRAME,
                     marker_type=Marker.POINTS)
 
 class RRTNode:
     def __init__(self, max_radius):
         # Initialize a node with a random state
-        r = np.random.uniform(max_radius + 1)
-        phi = np.random.uniform(2*np.pi)
+        r = np.random.uniform(max_radius + 5)
+        phi = np.random.uniform(-np.pi,np.pi)
         x = r * np.cos(phi)
         y = r * np.sin(phi)
-        theta = np.random.uniform(2*np.pi)
+        theta = np.random.uniform(-np.pi, np.pi)
 
         self.pose = np.array([x, y, theta])
 
         self.parent = None
         self.children = []
 
+    def total_cost(self):
+        c = 0
+        node = self
+        while node is not None:
+            c += node.cost
+            node = node.parent
+        return c
+
     def set_parent(self, parent, cost):
         if self.parent is not None:
             self.parent.children.remove(self)
-        self.parent = parent
-        self.cost = cost
+        parent.add_child(self, cost)
 
     def add_child(self, child, cost):
         self.children.append(child)
