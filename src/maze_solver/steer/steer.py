@@ -25,6 +25,12 @@ class Steer(object):
         points -= np.array((map_msg.info.origin.position.x, map_msg.info.origin.position.y))
         points_px = np.round(points/map_msg.info.resolution).astype(int)
 
+        # Remove ones that are out of bounds
+        upper_points = (points_px < np.array([map_msg.info.width, map_msg.info.height]))
+        lower_points = (points_px >= np.zeros((2)))
+        good_points = np.logical_and(np.all(upper_points, axis=1), np.all(lower_points, axis=1))
+        points_px = points_px[good_points]
+
         # Fetch the values at those coordinates
         occupancy_values = map_msg.data[points_px[:,1],points_px[:,0]]
 
