@@ -7,6 +7,24 @@
 Install [```pydubins```](https://github.com/AndrewWalker/pydubins) through pip.
 
     pip install dubins
+
+### RTree
+
+Install [```libspatialindex```](http://libspatialindex.github.io/index.html):
+
+    git clone https://github.com/libspatialindex/libspatialindex.git
+    sudo apt-get install automake
+    cd libspatialindex
+    ./autogen.sh
+    ./configure
+    # ./configure --prefix=/home/racecar-ws/devel
+    make
+    sudo make install
+    sudo ldconfig
+
+Install [```rtree```](http://toblerity.org/rtree/) through pip.
+
+    pip install rtree
     
 ### Cartographer
 
@@ -36,6 +54,6 @@ Install [```pydubins```](https://github.com/AndrewWalker/pydubins) through pip.
     catkin_make_isolated --install --use-ninja
     source install_isolated/setup.bash
 
-Then install the racecar configuration files:
+Add this to your ~/.bashrc
 
-    maze_solver/cartographer_config/install.sh
+    source ~/cartographer_ws/install_isolated/setup.bash

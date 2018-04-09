@@ -3,6 +3,8 @@ import dubins
 
 import numpy as np
 
+OCCUPANCY_THRESHOLD = 50
+
 class Steer(object):
     __metaclass__ = abc.ABCMeta
 
@@ -14,42 +16,19 @@ class Steer(object):
     def length(self):
         pass
 
-    def intersects(self, robot_radius, map_msg):
+    def intersects(self, map_msg):
         # Extract the points
-        poses = self.sample(robot_radius)
+        poses = self.sample(map_msg.info.resolution)
         points = poses[:, :2]
 
         # Convert to map coordinates
-        points -= np.array((map_msg.info.height, map_msg.info.width))
+        points -= np.array((map_msg.info.origin.position.x, map_msg.info.origin.position.y))
         points_px = np.round(points/map_msg.info.resolution).astype(int)
-        robot_radius_px = np.ceil(robot_radius/map_msg.info.resolution).astype(int)
 
-        # Add the kernel
-        points_px = np.reshape(points_px, (points.shape[0], 1, 1, 2))
-        kernel_offsets = np.arange(-robot_radius_px, robot_radius_px, dtype=int)
-        x, y = np.meshgrid(kernel_offsets, kernel_offsets)
-        kernel = np.stack((x, y), axis=2)
-        kernel = np.expand_dims(kernel, axis=0)
+        # Fetch the values at those coordinates
+        occupancy_values = map_msg.data[points_px[:,1],points_px[:,0]]
 
-        points_px_kernelized = points_px + kernel
-        points_px_kernelized = np.reshape(points_kernelized, (-1, 2))
-
-        # Check each point
-
-        # interects_ = False
-        # for point in points:
-            # num_hits = self.map_differences.rtree.count((point[0], point[1], point[0], point[1]))
-            # intersects_ = intersects_ or (num_hits > 0)
-
-        """
-        Time intersection time with rtree
-        or just doing it manually
-
-        convert points to map pixels
-        for each point also consider n points around that point
-        """
-
-        return intersects_
+        return np.any(occupancy_values > OCCUPANCY_THRESHOLD)
 
 class DubinsSteer(Steer):
 
