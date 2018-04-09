@@ -14,7 +14,7 @@ from maze_solver.utils.visualization_utils import VisualizationUtils
 
 class RRT:
 
-    NUM_NEAREST = 10
+    NUM_NEAREST = 20
     MAX_RADIUS = 20.
     MIN_TURNING_RADIUS = 1.
     PATH_VIZ_TOPIC = "/path_viz"
@@ -60,8 +60,8 @@ class RRT:
                 self.iterate()
                 self.visualize_path()
                 self.visualize_tree()
-                # if len(self.nodes) % 100 == 0:
-                    # print "inserts: ", len(self.nodes), "rewires: ", self.num_rewires
+                if len(self.nodes) % 100 == 0:
+                    print "inserts: ", len(self.nodes), "rewires: ", self.num_rewires
             else:
                 r.sleep()
 
