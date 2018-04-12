@@ -15,6 +15,8 @@ from maze_solver.rrt.rrt_visualizer import RRTVisualizer
 class RRT:
 
     NUM_NEAREST = 20
+    DILATION_RADIUS = 0.4
+    CAR_RADIUS = 0.3
     MAX_RADIUS = 20.
     MIN_TURNING_RADIUS = 1.
     CARTOGAPHER_MAP_DILATED_TOPIC = "/cartographer_map_dilated"
@@ -28,6 +30,8 @@ class RRT:
 
         # Precompute gamma for near
         self.gamma_rrt = 2.*(1 + 1/2.)**(1/2.)*self.MAX_RADIUS
+
+        self.sample_width = 2 * np.sqrt(self.DILATION_RADIUS**2 - self.CAR_RADIUS**2)
         
         # Make a root and a goal
         self.root = RRTNode(
@@ -59,8 +63,11 @@ class RRT:
             self.rtree_lock.acquire()
             self.iterate()
             self.rtree_lock.release()
-            # if self.node_index % 100 == 0:
+            if self.node_index % 100 == 0:
+                print self.node_index
                 # self.visualizer.visualize_tree(self)
+            # if self.node_index > 400:
+                # break
 
     def map_cb(self, msg):
         """
@@ -123,7 +130,7 @@ class RRT:
 
             # Try steering from x_near to x_rand
             steer = x_rand.steer(self.MIN_TURNING_RADIUS, parent=x_near)
-            if not steer.intersects(self.map_msg):
+            if not steer.intersects(self.sample_width, self.map_msg):
 
                 # If the steer does not intersect, compute the path length
                 total_cost = steer.length() + x_near.total_cost()
@@ -153,7 +160,7 @@ class RRT:
 
             # Try steering from x_rand to x_near
             steer = x_near.steer(self.MIN_TURNING_RADIUS, parent=x_rand)
-            if not steer.intersects(self.map_msg):
+            if not steer.intersects(self.sample_width, self.map_msg):
 
                 # If the steer does not intersect, compute the path length
                 total_cost = steer.length() + x_rand.total_cost()

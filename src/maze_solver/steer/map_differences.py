@@ -20,7 +20,7 @@ from maze_solver.utils.visualization_utils import VisualizationUtils
 
 class MapDifferences:
 
-    CAR_RADIUS = 0.3
+    DILATION_RADIUS = 0.4
     OCCUPANCY_THRESHOLD = 0.5
     OCCUPIED_TOPIC = "/occupied"
     CARTOGRAPHER_TOPIC = "/cartographer_map"
@@ -59,7 +59,8 @@ class MapDifferences:
     def dilate(self, msg):
         # Apply dilation
         self.grid_dilated.resize(msg.data.shape)
-        skimage.morphology.dilation(msg.data, selem=skimage.morphology.disk(5), out=self.grid_dilated)
+        disk = skimage.morphology.disk(np.ceil(self.DILATION_RADIUS/msg.info.resolution), dtype=np.int8)
+        skimage.morphology.dilation(msg.data, selem=disk, out=self.grid_dilated)
 
         # Publish the message
         msg_out = numpy_msg(OccupancyGrid)()

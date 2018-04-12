@@ -1,5 +1,6 @@
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
+from std_msgs.msg import ColorRGBA
 
 class VisualizationUtils:
 
