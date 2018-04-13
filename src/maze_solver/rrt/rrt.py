@@ -14,8 +14,10 @@ from maze_solver.rrt.rrt_visualizer import RRTVisualizer
 
 class RRT:
 
-    NUM_NEAREST = 20
+    P_UNIFORM = 0.3
+    BRIDGE_STD_DEV = 1.
     DILATION_RADIUS = 0.4
+    OCCUPANCY_THRESHOLD = 80
     CAR_RADIUS = 0.3
     MAX_RADIUS = 20.
     MIN_TURNING_RADIUS = 1.
@@ -31,6 +33,8 @@ class RRT:
         # Precompute gamma for near
         self.gamma_rrt = 2.*(1 + 1/2.)**(1/2.)*self.MAX_RADIUS
 
+        # Compute the sample width necessary for the car
+        # not to intersect with obstacles
         self.sample_width = 2 * np.sqrt(self.DILATION_RADIUS**2 - self.CAR_RADIUS**2)
         
         # Make a root and a goal
@@ -41,6 +45,7 @@ class RRT:
         self.goal = RRTNode(
                 pose=np.zeros(3),
                 cost=np.inf)
+        self.goal_cost = np.inf
 
         # Subscribe to the dilated map
         self.map_msg = None
@@ -63,9 +68,10 @@ class RRT:
             self.rtree_lock.acquire()
             self.iterate()
             self.rtree_lock.release()
+            self.visualizer.visualize_path(self)
+            self.visualizer.visualize_tree(self)
             if self.node_index % 100 == 0:
                 print self.node_index
-                # self.visualizer.visualize_tree(self)
             # if self.node_index > 400:
                 # break
 
@@ -77,6 +83,7 @@ class RRT:
             msg: A ROS numpy_msg(OccupancyGrid) message.
         """
         msg.data.shape = (msg.info.height, msg.info.width)
+        self.occupied_points = np.argwhere(msg.data > self.OCCUPANCY_THRESHOLD)
         self.map_msg = msg
 
     def insert(self, rrt_node):
@@ -170,13 +177,41 @@ class RRT:
                 if total_cost < x_near.total_cost():
                     x_near.set_parent(x_rand, steer.length())
 
+    def check_goal(self, node):
+        # Find the closest point on the boundary
+        position = node.pose[:2]
+        direction = node.pose[:2]/np.linalg.norm(node.pose[:2])
+        closest_pose = np.array([
+            direction[0] * self.MAX_RADIUS,
+            direction[1] * self.MAX_RADIUS,
+            np.arctan2(direction[1], direction[0])])
+        closest = RRTNode(pose=closest_pose)
+
+        # Steer from the node to that point
+        steer = closest.steer(self.MIN_TURNING_RADIUS, parent=node)
+        if not steer.intersects(self.sample_width, self.map_msg):
+
+            # If there is no intersection check the total cost
+            total_cost = steer.length() + node.total_cost()
+            if total_cost < self.goal_cost:
+                self.insert(closest)
+                closest.set_parent(node, steer.length())
+                self.goal = closest
+                self.goal_cost = total_cost
+
     def iterate(self):
         """
         Perform the RRT* algorithm.
         """
 
         # Choose a random sample.
-        x_rand = RRTNode(self.MAX_RADIUS)
+        x_rand = RRTNode(
+                p_uniform=self.P_UNIFORM,
+                max_radius=self.MAX_RADIUS,
+                bridge_std_dev=self.BRIDGE_STD_DEV,
+                map_msg=self.map_msg,
+                occupied_points=self.occupied_points,
+                occupancy_threshold=self.OCCUPANCY_THRESHOLD)
 
         # Choose the K-nearest neighbors of the random sample
         X_near = self.near(x_rand)
@@ -184,12 +219,7 @@ class RRT:
         self.grow_tree(x_rand, X_near)
         if x_rand.parent is not None:
             self.rewire(x_rand, X_near)
-
-            # Check if x_rand is the goal
-            # if x_rand.radius() > self.MAX_RADIUS:
-                # if x_rand.total_cost() < self.goal.total_cost():
-                    # self.goal = x_rand
-                    # print "cost: ", self.goal.total_cost(), "radius: ", self.goal.radius()
+            self.check_goal(x_rand)
 
 if __name__ == "__main__":
     rospy.init_node("rrt")

@@ -26,18 +26,15 @@ class RRTVisualizer:
                 Marker,
                 queue_size=1)
 
-        print "yo"
-
-
     def visualize_path(self, rrt):
         if self.path_viz_pub.get_num_connections() > 0:
-            if self.goal.parent is None:
+            if rrt.goal.parent is None:
                 return
             points = []
-            node = self.goal
+            node = rrt.goal
             while node.parent is not None:
-                steer = node.steer(self.MIN_TURNING_RADIUS)
-                points.append(steer.sample(0.1))
+                steer = node.steer(rrt.MIN_TURNING_RADIUS)
+                points.append(steer.sample(0.05))
                 node = node.parent
             points = np.concatenate(points, axis=0)
 

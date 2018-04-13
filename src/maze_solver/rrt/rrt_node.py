@@ -1,9 +1,19 @@
 import numpy as np
 
 from maze_solver.steer.steer import DubinsSteer
+from maze_solver.rrt.pose_sampler import PoseSampler
 
 class RRTNode:
-    def __init__(self, max_radius=1., pose=None, cost=None, reverse=None):
+    def __init__(self, 
+            pose=None, 
+            p_uniform=None,
+            bridge_std_dev=None,
+            max_radius=None,
+            map_msg=None,
+            occupied_points=None,
+            occupancy_threshold=None,
+            cost=None, 
+            reverse=None):
         """
         Create a node to be placed in an RRT* tree.
 
@@ -25,12 +35,13 @@ class RRTNode:
 
         if pose is None:
             # Initialize a node with a random state
-            r = np.random.uniform(max_radius)
-            phi = np.random.uniform(-np.pi,np.pi)
-            x = r * np.cos(phi)
-            y = r * np.sin(phi)
-            theta = np.random.uniform(-np.pi, np.pi)
-            self.pose = np.array([x, y, theta])
+            self.pose = PoseSampler.hybrid(
+                    p_uniform,
+                    max_radius,
+                    bridge_std_dev,
+                    map_msg,
+                    occupied_points,
+                    occupancy_threshold)
         else:
             self.pose = pose
 
