@@ -5,8 +5,6 @@ import dubins
 
 import numpy as np
 
-OCCUPANCY_THRESHOLD = 80
-
 class Steer(object):
     __metaclass__ = abc.ABCMeta
 
@@ -18,45 +16,9 @@ class Steer(object):
     def length(self):
         pass
 
-    def intersects(self, sample_width, map_msg):
-        # Compute the necessary sample width
-        # to account for all intersections
-
-        return self.sample_intersects(sample_width, map_msg)
-
-
-        # sample_width = 0.8
-
-        # Extract the points
-        # points_px = self.sample(sample_width, map_msg)
-        poses = self.sample(sample_width, map_msg)
-        # return False
-        # return points_px
-
-        # poses = np.zeros((30,3))
-
-        # Convert to map coordinates
-        points = poses[:, :2]
-        points[:,0] -= map_msg.info.origin.position.x
-        points[:,1] -= map_msg.info.origin.position.y
-        points /= map_msg.info.resolution
-        np.rint(points, out=points)
-        points_px = points.astype(int)
-        # points_px = int(points)
-        return False
-
-        # Remove ones that are out of bounds
-        upper_points = (points_px < np.array([map_msg.info.width, map_msg.info.height]))
-        lower_points = (points_px >= np.zeros((2)))
-        good_points = np.logical_and(np.all(upper_points, axis=1), np.all(lower_points, axis=1))
-        points_px = points_px[good_points]
-
-        # Fetch the values at those coordinates
-        occupancy_values = map_msg.data[points_px[:,1],points_px[:,0]]
-
-        does_intersect = np.any(occupancy_values > OCCUPANCY_THRESHOLD)
-
-        return does_intersect
+    @abc.abstractmethod
+    def intersects(self, sample_width, map_msg, occupancy_threshold):
+        pass
 
 class DubinsSteer(Steer):
 
@@ -65,19 +27,13 @@ class DubinsSteer(Steer):
         self.path = dubins.shortest_path(q0, q1, turning_radius)
 
     def sample(self, step_size):
-        # poses = self.path.sample_many_map(
-                # step_size, 
-                # map_msg.info.origin.position.x,
-                # map_msg.info.origin.position.y,
-                # map_msg.info.resolution)
-
         poses,_ = self.path.sample_many(step_size)
         poses.append(self.q1)
         poses = np.array(poses)
         return poses
 
-    def sample_intersects(self, step_size, map_msg):
-        return self.path.sample_intersects(step_size, map_msg, OCCUPANCY_THRESHOLD)
+    def intersects(self, step_size, map_msg, occupancy_threshold):
+        return self.path.sample_intersects(step_size, map_msg, occupancy_threshold)
 
     def length(self):
         return self.path.path_length()

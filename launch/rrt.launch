@@ -1,0 +1,8 @@
+<launch>
+  <!-- Load parameters -->
+  <include file="$(find maze_solver)/launch/params.launch"/>
+
+  <!-- Launch rrt -->
+  <node name="map_dilater" pkg="maze_solver" type="map_dilater.py" output="screen"/>
+	<node name="rrt" pkg="maze_solver" type="rrt.py" output="screen"/>
+</launch>

@@ -14,16 +14,17 @@ from maze_solver.rrt.rrt_visualizer import RRTVisualizer
 
 class RRT:
 
-    P_UNIFORM = 0.3
-    BRIDGE_STD_DEV = 1.
-    DILATION_RADIUS = 0.4
-    OCCUPANCY_THRESHOLD = 80
-    CAR_RADIUS = 0.3
-    MAX_RADIUS = 20.
-    MIN_TURNING_RADIUS = 1.
-    CARTOGAPHER_MAP_DILATED_TOPIC = "/cartographer_map_dilated"
+    # Fetch parameters
+    P_UNIFORM = rospy.get_param("/maze_solver/p_uniform")
+    BRIDGE_STD_DEV = rospy.get_param("/maze_solver/bridge_std_dev")
+    DILATION_RADIUS = rospy.get_param("/maze_solver/dilation_radius")
+    OCCUPANCY_THRESHOLD = rospy.get_param("/maze_solver/occupancy_threshold")
+    CAR_RADIUS = rospy.get_param("/maze_solver/car_radius")
+    SEARCH_RADIUS = rospy.get_param("/maze_solver/search_radius")
+    MIN_TURNING_RADIUS = rospy.get_param("/maze_solver/min_turning_radius")
+    CARTOGAPHER_MAP_DILATED_TOPIC = rospy.get_param("maze_solver/cartographer_dilated_topic")
 
-    def __init__(self):
+    def __init__(self, pose=np.zeros(3)):
         # Initialize the tree structure
         self.nodes = {}
         self.node_index = 0
@@ -31,7 +32,7 @@ class RRT:
         self.rtree_lock = threading.Lock()
 
         # Precompute gamma for near
-        self.gamma_rrt = 2.*(1 + 1/2.)**(1/2.)*self.MAX_RADIUS
+        self.gamma_rrt = 2.*(1 + 1/2.)**(1/2.)*self.SEARCH_RADIUS
 
         # Compute the sample width necessary for the car
         # not to intersect with obstacles
@@ -39,12 +40,10 @@ class RRT:
         
         # Make a root and a goal
         self.root = RRTNode(
-                pose=np.zeros(3),
+                pose=pose,
                 cost=0)
         self.insert(self.root)
-        self.goal = RRTNode(
-                pose=np.zeros(3),
-                cost=np.inf)
+        self.goal = None
         self.goal_cost = np.inf
 
         # Subscribe to the dilated map
@@ -72,8 +71,6 @@ class RRT:
             self.visualizer.visualize_tree(self)
             if self.node_index % 100 == 0:
                 print self.node_index
-            # if self.node_index > 400:
-                # break
 
     def map_cb(self, msg):
         """
@@ -137,7 +134,7 @@ class RRT:
 
             # Try steering from x_near to x_rand
             steer = x_rand.steer(self.MIN_TURNING_RADIUS, parent=x_near)
-            if not steer.intersects(self.sample_width, self.map_msg):
+            if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD):
 
                 # If the steer does not intersect, compute the path length
                 total_cost = steer.length() + x_near.total_cost()
@@ -167,7 +164,7 @@ class RRT:
 
             # Try steering from x_rand to x_near
             steer = x_near.steer(self.MIN_TURNING_RADIUS, parent=x_rand)
-            if not steer.intersects(self.sample_width, self.map_msg):
+            if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD):
 
                 # If the steer does not intersect, compute the path length
                 total_cost = steer.length() + x_rand.total_cost()
@@ -182,14 +179,14 @@ class RRT:
         position = node.pose[:2]
         direction = node.pose[:2]/np.linalg.norm(node.pose[:2])
         closest_pose = np.array([
-            direction[0] * self.MAX_RADIUS,
-            direction[1] * self.MAX_RADIUS,
+            direction[0] * self.SEARCH_RADIUS,
+            direction[1] * self.SEARCH_RADIUS,
             np.arctan2(direction[1], direction[0])])
         closest = RRTNode(pose=closest_pose)
 
         # Steer from the node to that point
         steer = closest.steer(self.MIN_TURNING_RADIUS, parent=node)
-        if not steer.intersects(self.sample_width, self.map_msg):
+        if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD):
 
             # If there is no intersection check the total cost
             total_cost = steer.length() + node.total_cost()
@@ -207,7 +204,7 @@ class RRT:
         # Choose a random sample.
         x_rand = RRTNode(
                 p_uniform=self.P_UNIFORM,
-                max_radius=self.MAX_RADIUS,
+                max_radius=self.SEARCH_RADIUS,
                 bridge_std_dev=self.BRIDGE_STD_DEV,
                 map_msg=self.map_msg,
                 occupied_points=self.occupied_points,
@@ -223,5 +220,5 @@ class RRT:
 
 if __name__ == "__main__":
     rospy.init_node("rrt")
-    RRT()
+    RRT((1., 1., 0.5))
     rospy.spin()

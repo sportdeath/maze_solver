@@ -1,0 +1,7 @@
+search_radius: 20.
+
+dilation_radius: 0.4
+
+occupancy_threshold: 80
+p_uniform: 0.3
+bridge_std_dev: 1.

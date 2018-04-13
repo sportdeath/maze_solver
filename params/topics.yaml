@@ -1,0 +1,5 @@
+laser_topic: "/scan_topic"
+drive_topic: "/vesc/ackermann_cmd_mux/input/navigation"
+map_topic: "/map"
+cartographer_topic: "/cartographer_map"
+cartographer_dilated_topic: "/cartographer_map_dilated"

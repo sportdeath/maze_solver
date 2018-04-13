@@ -28,7 +28,7 @@ class RRTVisualizer:
 
     def visualize_path(self, rrt):
         if self.path_viz_pub.get_num_connections() > 0:
-            if rrt.goal.parent is None:
+            if rrt.goal is None:
                 return
             points = []
             node = rrt.goal

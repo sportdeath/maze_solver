@@ -8,7 +8,7 @@ class RRTNode:
             pose=None, 
             p_uniform=None,
             bridge_std_dev=None,
-            max_radius=None,
+            search_radius=None,
             map_msg=None,
             occupied_points=None,
             occupancy_threshold=None,
@@ -18,12 +18,12 @@ class RRTNode:
         Create a node to be placed in an RRT* tree.
 
         Args:
-            max_radius: The radius away from the origin that
+            search_radius: The radius away from the origin that
                 poses are generated within.
             poas: The pose of the node. If pose is set to None,
                 the pose is randomly generated. The position of
                 the pose is generated uniformly at random within
-                max_radius and orientation is uniform in
+                search_radius and orientation is uniform in
                 [-Pi, Pi).
             cost: The cost of the node measured as the distance
                 from the parent node.
@@ -37,7 +37,7 @@ class RRTNode:
             # Initialize a node with a random state
             self.pose = PoseSampler.hybrid(
                     p_uniform,
-                    max_radius,
+                    search_radius,
                     bridge_std_dev,
                     map_msg,
                     occupied_points,
@@ -99,39 +99,3 @@ class RRTNode:
         self.parent = parent
         self.parent.children.append(self)
         self.cost = cost
-
-    def radius(self):
-        return np.linalg.norm(self.pose[:2])
-
-    def set_root(self, tree_lock):
-        """
-        Set a node to the root of the tree.
-
-        Args:
-            tree_lock: A threading.Lock() object, required
-                to avoid threading conflicts with a growing
-                RRT* tree.
-        """
-
-        tree_lock.aquire()
-
-        cost = self.cost
-        parent = self.parent
-        self.cost = 0
-        self.parent = None
-
-        # parent.set_parent(
-        # parent.reverse = True
-        # parent.cost = cost
-
-        # Set the parent's parent to the node
-        # and set it to be in reverse
-        node.parent.reverse = True
-        node.parent.cost = node.cost
-        node.parent.set_parent(node)
-
-        # Prevent a loop and make minimum cost
-        node.parent = None
-        node.cost = 0
-
-        tree_lock.release()
