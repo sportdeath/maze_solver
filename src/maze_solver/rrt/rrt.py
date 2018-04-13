@@ -99,7 +99,7 @@ class RRT:
 
             # Try steering from x_near to x_rand
             steer = x_rand.steer(self.MIN_TURNING_RADIUS, parent=x_near)
-            if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD):
+            if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD, x_rand.reverse):
 
                 # If the steer does not intersect, compute the path length
                 total_cost = steer.length() + x_near.total_cost()
@@ -131,7 +131,7 @@ class RRT:
 
             # Try steering from x_rand to x_near
             steer = x_near.steer(self.MIN_TURNING_RADIUS, parent=x_rand)
-            if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD):
+            if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD, x_near.reverse):
 
                 # If the steer does not intersect, compute the path length
                 total_cost = steer.length() + x_rand.total_cost()
@@ -155,7 +155,7 @@ class RRT:
         for g in [goal, goal_rev]:
             # Steer from the node to that point
             steer = g.steer(self.MIN_TURNING_RADIUS, parent=node)
-            if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD):
+            if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD, g.reverse):
                 self.insert(g)
                 g.set_parent(
                         node,

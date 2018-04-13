@@ -17,7 +17,7 @@ class Steer(object):
         pass
 
     @abc.abstractmethod
-    def intersects(self, sample_width, map_msg, occupancy_threshold):
+    def intersects(self, sample_width, map_msg, occupancy_threshold, reverse):
         pass
 
 class DubinsSteer(Steer):
@@ -32,8 +32,11 @@ class DubinsSteer(Steer):
         poses = np.array(poses)
         return poses
 
-    def intersects(self, step_size, map_msg, occupancy_threshold):
-        return self.path.sample_intersects(step_size, map_msg, occupancy_threshold)
+    def intersects(self, step_size, map_msg, occupancy_threshold, reverse):
+        if reverse:
+            return self.path.sample_intersects(step_size, map_msg, 2, 0)
+        else:
+            return self.path.sample_intersects(step_size, map_msg, occupancy_threshold, -1)
 
     def length(self):
         return self.path.path_length()

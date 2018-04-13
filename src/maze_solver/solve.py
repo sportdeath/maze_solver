@@ -68,7 +68,7 @@ class Solve:
         # Check if the goal path intersects
         recompute = (not self.path) or self.tracker.is_lost
         for steer, reverse in self.path:
-            if steer.intersects(self.rrt.sample_width, self.map_msg, self.rrt.OCCUPANCY_THRESHOLD):
+            if steer.intersects(self.rrt.sample_width, self.map_msg, self.rrt.OCCUPANCY_THRESHOLD, reverse):
                 recompute = True
                 break
 
