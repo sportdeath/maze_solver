@@ -84,7 +84,7 @@ class RRTNode:
             node = node.parent
         return c
 
-    def set_parent(self, parent, cost, path_tree, min_turning_radius):
+    def set_parent(self, parent, cost):
         """
         Sets the parent of a node and adds self as
         a child of the parent node.
@@ -96,13 +96,16 @@ class RRTNode:
         """
         if self.parent is not None:
             self.parent.children.remove(self)
-            path_tree.delete(self.index, path_tree.bounds)
         self.parent = parent
         self.parent.children.append(self)
         self.cost = cost
 
-        path_tree.insert(self.index, (
-            min(self.pose[0], self.parent.pose[0]) - min_turning_radius,
-            min(self.pose[1], self.parent.pose[1]) - min_turning_radius,
-            max(self.pose[0], self.parent.pose[0]) + min_turning_radius,
-            max(self.pose[1], self.parent.pose[1]) + min_turning_radius))
+    def path(self, min_turning_radius):
+        node = self
+        path = []
+        while node.parent is not None:
+            steer = node.steer(min_turning_radius)
+            path.append(steer)
+            node = node.parent
+
+        return path[::-1]

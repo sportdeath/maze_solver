@@ -1,5 +1,7 @@
 search_radius: 20.
 
+rrt_iterations: 300
+
 dilation_radius: 0.4
 
 occupancy_threshold: 80

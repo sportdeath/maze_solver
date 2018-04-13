@@ -40,24 +40,18 @@ class RRTVisualizer:
                     frame=self.CARTOGRAPHER_FRAME,
                     marker_type=Marker.POINTS)
 
-    def visualize_path(self, rrt):
+    def visualize_path(self, path):
         if self.path_viz_pub.get_num_connections() > 0:
-            if rrt.goal is None:
-                return
             points = []
-            node = rrt.goal
-            while node.parent is not None:
-                steer = node.steer(rrt.MIN_TURNING_RADIUS)
+            for steer in path:
                 points.append(steer.sample(0.05))
-                node = node.parent
-            points = np.concatenate(points, axis=0)
 
+            points = np.concatenate(points, axis=0)
             VisualizationUtils.plot(
                     points[:,0], points[:,1],
                     self.path_viz_pub, 
                     color=(0.,1.,0.),
-                    frame=self.CARTOGRAPHER_FRAME,
-                    marker_type=Marker.POINTS)
+                    frame=self.CARTOGRAPHER_FRAME)
 
     def visualize_tree(self, rrt):
         if self.tree_viz_for_pub.get_num_connections() > 0:
