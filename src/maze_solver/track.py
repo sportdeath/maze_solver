@@ -55,7 +55,7 @@ class Track:
             print "Waiting for pose"
 
         print "Recomputing..."
-        self.rrt = RRT(self.tracker.pose, map_msg, goal=goal)
+        self.rrt = RRT(self.tracker.pose, map_msg, goal_pose=goal)
 
         # Get the path from RRT
         self.path = []

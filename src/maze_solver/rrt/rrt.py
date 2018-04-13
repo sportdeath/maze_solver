@@ -21,7 +21,7 @@ class RRT:
     SEARCH_RADIUS = rospy.get_param("/maze_solver/search_radius")
     MIN_TURNING_RADIUS = rospy.get_param("/maze_solver/min_turning_radius")
 
-    def __init__(self, pose, map_msg, goal=None):
+    def __init__(self, pose, map_msg, goal_pose=None):
         self.map_msg = map_msg
         self.occupied_points = np.argwhere(self.map_msg.data > self.OCCUPANCY_THRESHOLD)
 
@@ -39,11 +39,7 @@ class RRT:
         self.sample_width = 2 * np.sqrt(self.DILATION_RADIUS**2 - self.CAR_RADIUS**2)
         
         # Make a root and a goal
-        if goal is not None:
-            self.goal = RRTNode(pose=goal, cost=np.inf)
-            self.insert(self.goal)
-        else:
-            self.goal = None
+        self.goal_pose = goal_pose
         self.goal_nodes = []
         self.root = RRTNode(
                 pose=pose,
@@ -148,9 +144,25 @@ class RRT:
                             steer.length())
 
     def check_goal(self, node):
-        if self.goal is not None:
-            return
+        if self.goal_pose is None:
+            goal_pose = self.radius_goal_pose(node)
+        else:
+            goal_pose = self.goal_pose
 
+        goal = RRTNode(pose=goal_pose)
+        goal_rev = RRTNode(pose=goal_pose,p_reverse=1)
+        
+        for g in [goal, goal_rev]:
+            # Steer from the node to that point
+            steer = g.steer(self.MIN_TURNING_RADIUS, parent=node)
+            if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD):
+                self.insert(g)
+                g.set_parent(
+                        node,
+                        steer.length())
+                self.goal_nodes.append(g)
+
+    def radius_goal_pose(self, node):
         # Find the closest point on the boundary
         position = node.pose[:2]
         direction = node.pose[:2]/np.linalg.norm(node.pose[:2])
@@ -158,26 +170,12 @@ class RRT:
             direction[0] * self.SEARCH_RADIUS,
             direction[1] * self.SEARCH_RADIUS,
             np.arctan2(direction[1], direction[0])])
-        goal = RRTNode(pose=goal_pose)
-
-        # Steer from the node to that point
-        steer = goal.steer(self.MIN_TURNING_RADIUS, parent=node)
-        if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD):
-            self.insert(goal)
-            goal.set_parent(
-                    node,
-                    steer.length())
-            self.goal_nodes.append(goal)
+        return goal_pose
 
     def path(self):
         """
         Get the shortest path to the goal.
         """
-        if self.goal is not None:
-            if self.goal.parent  is not None:
-                return self.goal.path(self.MIN_TURNING_RADIUS)
-            else:
-                return None
 
         min_node = None
         min_cost = np.inf

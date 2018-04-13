@@ -45,7 +45,7 @@ class TrajectoryTracker:
 
         # Initialize stopped
         self.is_lost = True
-        self.at_end = False
+        self.at_end = True
 
         # Create a drive timer
         rospy.Timer(rospy.Duration(self.TRAJECTORY_RATE), self.drive)
@@ -54,7 +54,7 @@ class TrajectoryTracker:
         """
         Stop driving.
         """
-        self.is_lost = True
+        self.at_end = True
         self.drive()
 
     def track(self, path):
@@ -71,10 +71,13 @@ class TrajectoryTracker:
             if i + 1 == len(path) or path[i + 1][1] != reverse:
                 # We are reversing direction or at the end of the path
                 # Add a look ahead point
-                points.append(np.array([[
-                    samples[-1,0] + self.LOOK_AHEAD_DISTANCE * np.cos(samples[-1,2]),
-                    samples[-1,1] + self.LOOK_AHEAD_DISTANCE * np.sin(samples[-1,2]),
-                    samples[-1,2]]]))
+                offset = np.array([[
+                    self.LOOK_AHEAD_DISTANCE * np.cos(samples[-1,2]),
+                    self.LOOK_AHEAD_DISTANCE * np.sin(samples[-1,2]),
+                    0]])
+                if reverse:
+                    offset *= -1
+                points.append(samples[-1:,:] + offset)
 
                 self.reverses += [self.reverses[-1]]
 
@@ -91,7 +94,9 @@ class TrajectoryTracker:
                 self.LOOK_AHEAD_DISTANCE_SQUARED)
 
         # If we are too far from the path
-        if self.is_lost or self.at_end:
+        # if self.is_lost or self.at_end:
+            # return 0, 0
+        if self.at_end:
             return 0, 0
 
         # Convert the goal point to local coordinates
@@ -116,7 +121,8 @@ class TrajectoryTracker:
         # Fetch a new pose
         self.update_pose()
 
-        if self.is_lost or self.at_end or (self.pose is None):
+        # if self.is_lost or self.at_end or (self.pose is None):
+        if self.at_end or (self.pose is None):
             velocity, angle = 0., 0.
         else:
             velocity, angle = self.compute_control()

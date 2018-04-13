@@ -69,7 +69,7 @@ class PurePursuit:
                 point_diff = points[i-1] - points[i]
                 a = np.dot(point_diff, point_diff)
                 b = 2 * np.dot(point_diff, diff)
-                c = np.dot(point_diff, diff) - look_ahead_distance_sq
+                c = np.dot(diff, diff) - look_ahead_distance_sq
 
                 root = (-b - np.sqrt(b*b - 4 * a * c))/(2 * a)
 
