@@ -85,7 +85,7 @@ class TrajectoryTracker:
 
         angle = PurePursuit.ackermann_angle(goal_point_base, self.AXLE_LENGTH)
 
-        # angle = np.clip(angle, -self.MAX_STEERING_ANGLE, self.MAX_STEERING_ANGLE)
+        angle = np.clip(angle, -self.MAX_STEERING_ANGLE, self.MAX_STEERING_ANGLE)
 
         return self.VELOCITY, angle
 

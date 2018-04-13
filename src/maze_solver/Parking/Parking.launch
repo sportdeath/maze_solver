@@ -1,3 +1,0 @@
-<launch>
-	<node name="Parking" pkg="final_challenge" type="Parking.py" output="screen"/>
-</launch>
