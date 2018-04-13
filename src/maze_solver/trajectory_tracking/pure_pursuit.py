@@ -26,7 +26,7 @@ class PurePursuit:
         sin_alpha = -goal_point_local[1]/goal_dist
         curvature = 2 * sin_alpha/goal_dist
 
-        return -np.arctan(curvature * axle_length)
+        return -np.arctan(curvature * axle_length), curvature
 
 
     @staticmethod

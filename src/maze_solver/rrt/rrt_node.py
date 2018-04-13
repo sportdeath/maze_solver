@@ -1,17 +1,14 @@
 import numpy as np
 
 from maze_solver.rrt.steer import DubinsSteer
-from maze_solver.rrt.pose_sampler import PoseSampler
 
 class RRTNode:
     def __init__(self, 
             pose=None, 
-            p_uniform=None,
-            bridge_std_dev=None,
-            search_radius=None,
+            pose_sampler=None,
+            car_pose=None,
             map_msg=None,
             occupied_points=None,
-            occupancy_threshold=None,
             cost=None,
             p_reverse=None):
         """
@@ -34,13 +31,10 @@ class RRTNode:
 
         if pose is None:
             # Initialize a node with a random state
-            self.pose = PoseSampler.hybrid(
-                    p_uniform,
-                    search_radius,
-                    bridge_std_dev,
+            self.pose = pose_sampler.hybrid(
+                    car_pose,
                     map_msg,
-                    occupied_points,
-                    occupancy_threshold)
+                    occupied_points)
         else:
             self.pose = pose
 

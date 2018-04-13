@@ -11,34 +11,41 @@ from nav_msgs.msg import OccupancyGrid
 from geometry_msgs.msg import Pose, PoseArray
 
 from maze_solver.rrt.pose_sampler import PoseSampler
+from maze_solver.trajectory_tracking.trajectory_tracker import TrajectoryTracker
 
 class TestPoseSampler:
 
-    CARTOGAPHER_MAP_DILATED_TOPIC = "/cartographer_map_dilated"
     SAMPLE_TOPIC = "/sample_test"
-    CARTOGRAPHER_FRAME = "cartographer_map"
-    OCCUPANCY_THRESHOLD = 80
-    P_UNIFORM = 0.3
-    MAX_RADIUS = 20.
-    BRIDGE_STD_DEV = 1.
+    CARTOGRAPHER_DILATED_TOPIC = rospy.get_param("/maze_solver/cartographer_dilated_topic")
+    CARTOGRAPHER_FRAME = rospy.get_param("/maze_solver/cartographer_frame")
+    OCCUPANCY_THRESHOLD = rospy.get_param("/maze_solver/occupancy_threshold")
 
     def __init__(self):
-        # Subscribe to the dilated map
-        self.map_msg = None
-        self.map_sub = rospy.Subscriber(
-                self.CARTOGAPHER_MAP_DILATED_TOPIC,
-                numpy_msg(OccupancyGrid),
-                self.map_cb, 
-                queue_size=1)
+        # Trajectory Tracker (for pose)
+        self.pose = None
+        self.tracker = TrajectoryTracker()
 
+        # The pose sampler itself
+        self.pose_sampler = PoseSampler()
+
+        # Publish a pose array
         self.pose_pub = rospy.Publisher(
                 self.SAMPLE_TOPIC,
                 PoseArray,
                 queue_size=1)
 
+        # Subscribe to the dilated map
+        self.map_msg = None
+        self.map_sub = rospy.Subscriber(
+                self.CARTOGRAPHER_DILATED_TOPIC,
+                numpy_msg(OccupancyGrid),
+                self.map_cb, 
+                queue_size=1)
+
         # Wait for the first map message
         r = rospy.Rate(10)
-        while (self.map_msg is None) and (not rospy.is_shutdown()):
+        while ((self.map_msg is None) or (self.pose is None)) and (not rospy.is_shutdown()):
+            self.pose = self.tracker.pose
             r.sleep()
 
 
@@ -50,15 +57,12 @@ class TestPoseSampler:
         while not rospy.is_shutdown():
             # Sample a random pose and time it
             start = timer()
-            # pose = PoseSampler.bridge(1., self.map_msg, self.occupied_points, self.OCCUPANCY_THRESHOLD)
+            # pose = self.pose_sampler.bridge(self.map_msg, self.occupied_points)
             # pose = PoseSampler.uniform(20., self.map_msg, self.OCCUPANCY_THRESHOLD)
-            pose = PoseSampler.hybrid(
-                    self.P_UNIFORM,
-                    self.MAX_RADIUS,
-                    self.BRIDGE_STD_DEV,
+            pose = self.pose_sampler.hybrid(
+                    self.pose,
                     self.map_msg,
-                    self.occupied_points,
-                    self.OCCUPANCY_THRESHOLD)
+                    self.occupied_points)
             end = timer()
             s += (end - start)
             n += 1
@@ -86,8 +90,8 @@ class TestPoseSampler:
             msg: A ROS numpy_msg(OccupancyGrid) message.
         """
         msg.data.shape = (msg.info.height, msg.info.width)
-        self.map_msg = msg
         self.occupied_points = np.argwhere(msg.data > self.OCCUPANCY_THRESHOLD)
+        self.map_msg = msg
 
 if __name__ == "__main__":
     rospy.init_node("test_pose_sampler")

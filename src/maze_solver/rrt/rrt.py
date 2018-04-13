@@ -4,16 +4,14 @@ import numpy as np
 from rtree import index as rtree_index
 
 import rospy
-from geometry_msgs.msg import PoseArray
 
 from maze_solver.rrt.rrt_node import RRTNode
 from maze_solver.rrt.map_differences import new_occupancies
+from maze_solver.rrt.pose_sampler import PoseSampler
 
 class RRT:
 
     # Fetch parameters
-    P_UNIFORM = rospy.get_param("/maze_solver/p_uniform")
-    BRIDGE_STD_DEV = rospy.get_param("/maze_solver/bridge_std_dev")
     DILATION_RADIUS = rospy.get_param("/maze_solver/dilation_radius")
     OCCUPANCY_THRESHOLD = rospy.get_param("/maze_solver/occupancy_threshold")
     P_REVERSE = rospy.get_param("/maze_solver/p_reverse")
@@ -31,6 +29,11 @@ class RRT:
         self.rrt_tree = rtree_index.Index()
         self.lock = threading.Lock()
 
+        self.lock.acquire()
+
+        # Make a pose sampler
+        self.pose_sampler = PoseSampler()
+
         # Precompute gamma for near
         self.gamma_rrt = 2.*(1 + 1/2.)**(1/2.)*self.SEARCH_RADIUS
 
@@ -46,6 +49,7 @@ class RRT:
                 cost=0)
         self.insert(self.root)
         self.check_goal(self.root)
+        self.lock.release()
 
     def insert(self, rrt_node):
         """
@@ -199,12 +203,10 @@ class RRT:
 
         # Choose a random sample.
         x_rand = RRTNode(
-                p_uniform=self.P_UNIFORM,
-                search_radius=self.SEARCH_RADIUS,
-                bridge_std_dev=self.BRIDGE_STD_DEV,
+                pose_sampler=self.pose_sampler,
+                car_pose=self.root.pose,
                 map_msg=self.map_msg,
                 occupied_points=self.occupied_points,
-                occupancy_threshold=self.OCCUPANCY_THRESHOLD,
                 p_reverse=self.P_REVERSE)
 
         # Choose the K-nearest neighbors of the random sample

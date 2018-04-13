@@ -1,0 +1,8 @@
+<launch>
+  <!-- Load parameters -->
+  <include file="$(find maze_solver)/launch/params.launch"/>
+
+  <!-- Solve the maze -->
+  <node name="map_dilater" pkg="maze_solver" type="map_dilater.py" output="screen"/>
+	<node name="test_pose_sampler" pkg="maze_solver" type="test_pose_sampler.py" output="screen"/>
+</launch>

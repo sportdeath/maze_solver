@@ -1,4 +1,4 @@
-velocity: 1.
+velocity: 1.5
 car_radius: 0.3
 axle_length: 0.3
 max_steering_angle: 0.34

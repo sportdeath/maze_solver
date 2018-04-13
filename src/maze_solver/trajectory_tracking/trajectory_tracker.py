@@ -25,6 +25,7 @@ class TrajectoryTracker:
     VELOCITY = rospy.get_param("/maze_solver/velocity")
     LOOK_AHEAD_VIZ_TOPIC = "/look_ahead"
     MIN_VELOCITY = 0.2
+    VELOCITY_PROP = 0.5
 
     def __init__(self):
         # Create a publisher
@@ -45,6 +46,7 @@ class TrajectoryTracker:
         self.pose = None
 
         # Initialize stopped
+        self.path = None
         self.is_lost = True
         self.at_end = True
 
@@ -88,40 +90,36 @@ class TrajectoryTracker:
         self.at_end = False
 
     def compute_control(self):
-        goal_point_map, t, self.path_index, self.is_lost, self.at_end = PurePursuit.pick_closest_point(
+        goal_point_map, t, self.path_index, self.is_lost, at_end = PurePursuit.pick_closest_point(
                 self.pose,
                 self.path,
                 self.path_index,
                 self.LOOK_AHEAD_DISTANCE_SQUARED)
 
-        # If we are too far from the path
-        # if self.is_lost or self.at_end:
-            # return 0, 0
-        if self.at_end:
-            return 0, 0
+        self.at_end = at_end or self.at_end
 
         # Convert the goal point to local coordinates
         goal_point_base = self.transform_point(goal_point_map)
         self.visualize(goal_point_base)
 
         # Get the pure pursuit angle
-        angle = PurePursuit.ackermann_angle(goal_point_base, self.AXLE_LENGTH)
+        angle, curvature = PurePursuit.ackermann_angle(goal_point_base, self.AXLE_LENGTH)
         angle = np.clip(angle, -self.MAX_STEERING_ANGLE, self.MAX_STEERING_ANGLE)
 
-        velocity = self.VELOCITY
-
         # Check if we are at the end or reversing 
-        # print self.path_index +1, len(self.path)
-        if self.path_index + 2 >= len(self.path) or \
-                self.reverses[self.path_index + 2] != self.reverses[self.path_index + 1]:
-            velocity = self.control_velocity(velocity, t)
+        if self.path_index + 2 < len(self.path) and \
+                self.reverses[self.path_index + 2] == self.reverses[self.path_index + 1]:
+            t = 1
+        velocity = self.control_velocity(t, curvature)
 
         if self.reverses[self.path_index]:
             velocity *= -1
 
         return velocity, angle
 
-    def control_velocity(self, velocity, t):
+    def control_velocity(self, t, curvature):
+        velocity = self.VELOCITY_PROP/abs(curvature)
+        velocity = min(velocity, self.VELOCITY)
         return max(self.MIN_VELOCITY, velocity * t)
 
     def drive(self, event=None):
@@ -132,11 +130,17 @@ class TrajectoryTracker:
         # Fetch a new pose
         self.update_pose()
 
+        if self.path is None:
+            return
+
         # if self.is_lost or self.at_end or (self.pose is None):
-        if self.at_end or (self.pose is None):
+        if self.pose is None:
             velocity, angle = 0., 0.
         else:
             velocity, angle = self.compute_control()
+
+        if self.at_end:
+            velocity = 0.
 
         # Make a message
         drive_msg = AckermannDriveStamped()
@@ -189,6 +193,7 @@ class TrajectoryTracker:
                     points[:,0],
                     points[:,1],
                     self.look_ahead_pub,
+                    color=(0.76, 0.335, 0.335),
                     frame=self.BASE_FRAME)
 
 

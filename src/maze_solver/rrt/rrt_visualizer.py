@@ -53,7 +53,7 @@ class RRTVisualizer:
             VisualizationUtils.plot(
                     points[:,0], points[:,1],
                     self.path_viz_pub, 
-                    color=(0.,1.,0.),
+                    color=(0.42,0.835,0.35),
                     frame=self.CARTOGRAPHER_FRAME)
 
     def visualize_tree(self, rrt):
