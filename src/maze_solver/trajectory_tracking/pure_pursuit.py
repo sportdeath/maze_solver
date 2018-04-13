@@ -5,10 +5,8 @@ class PurePursuit:
     Methods for pure pursuit.
     """
 
-    CAR_AXEL_DISTANCE = rospy.get_param("car_axle_distance")
-    LOOK_AHEAD_DIST_SQUARED = rospy.get_param("look_ahead_dist_squared")
-
-    def get_ackermann_angle(self, goal_point_local):
+    @staticmethod
+    def ackermann_angle(goal_point_local, axle_length):
 	"""
 	Computes the steering angle of the car
 	for a goal point relative to the racecar's
@@ -25,22 +23,24 @@ class PurePursuit:
 
         goal_dist = np.linalg.norm(goal_point_local)
 
-        sin_alpha = goal_point_local[0]/goal_distance
-        curvature = 2 * sin_alpha/goal_distance
+        sin_alpha = -goal_point_local[1]/goal_dist
+        curvature = 2 * sin_alpha/goal_dist
 
-        return -np.arctan(curvature * self.CAR_AXLE_DISTANCE)
+        return -np.arctan(curvature * axle_length)
 
 
-    def pick_closest_point(self, position, points, prev_index):
+    @staticmethod
+    def pick_closest_point(pose, points, prev_index, look_ahead_distance_sq):
         """
         Returns a point, interpolated from a list of points
         that is closest to the look ahead distance
         and the index of that point.
 
         Args:
-            position: The current position of the racecar.
+            pose: The current pose of the racecar.
             points: A numpy array of 2D trajectory points.
             prev_index: The previous trajectory index of the racecar.
+            look_ahead_distance_sq: The look ahead distance, squared.
 
         Returns:
             point: The trajectory point to steer to.
@@ -49,35 +49,34 @@ class PurePursuit:
             is_lost: A boolean that is true if the racecar is
                 off of the trajectory.
         """
+        position = pose[:2]
 
-        # If the current point index is further ahead than the
-        # look ahead distance then return that point
+        # Check to see if we are lost
         prev_diff = points[prev_index] - position
-        prev_diff_squared = np.dot(prev_difference, prev_difference)
-        if prev_difference_squared >= self.LOOK_AHEAD_DIST_SQUARED:
-            return points[prev_index], prev_index, True
-
+        prev_diff_sq = np.dot(prev_diff, prev_diff)
+        if prev_diff_sq >= look_ahead_distance_sq:
+            return points[prev_index], prev_index, True, False
 
         # For all future points
         for i in xrange(prev_index + 1, len(points)):
             # Search for the first point that is greater than
             # the look ahead distance
             diff = points[i] - position
-            if np.dot(diff, diff) >= self.LOOK_AHEAD_DIST_SQUARED:
+            if np.dot(diff, diff) >= look_ahead_distance_sq:
 
                 # Interpolate between the point just greater than (i)
                 # and the point just less than (i - 1) the look ahead distance
                 point_diff = points[i-1] - points[i]
                 a = np.dot(point_diff, point_diff)
                 b = 2 * np.dot(point_diff, diff)
-                c = np.dot(point_diff, diff) - self.LOOK_AHEAD_DIST_SQUARED
+                c = np.dot(point_diff, diff) - look_ahead_distance_sq
 
                 root = (-b - np.sqrt(b*b - 4 * a * c))/(2 * a)
 
                 interpolated = points[i] + root * point_diff
 
-                return interpolated, i - 1, False
+                return interpolated, i - 1, False, False
 
-        # If all future points are less than the look ahead distance
-        # Return the very last point
-        return points[-1], len(points) - 1, False
+        # If all future points are less than the look ahead distance,
+        # we have reached the end of the path.
+        return points[-1], len(points) - 1, False, True

@@ -1,0 +1,3 @@
+trajectory_sample_width: 0.1
+trajectory_rate: 0.02
+look_ahead_distance: 1.

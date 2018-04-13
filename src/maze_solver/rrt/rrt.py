@@ -38,12 +38,12 @@ class RRT:
         self.sample_width = 2 * np.sqrt(self.DILATION_RADIUS**2 - self.CAR_RADIUS**2)
         
         # Make a root and a goal
+        self.goal_nodes = []
         self.root = RRTNode(
                 pose=pose,
                 cost=0)
         self.insert(self.root)
         self.check_goal(self.root)
-        self.goal_nodes = []
 
     def insert(self, rrt_node):
         """
@@ -203,8 +203,3 @@ class RRT:
 
         # Unlock
         self.lock.release()
-
-if __name__ == "__main__":
-    rospy.init_node("rrt")
-    RRT((1., 1., 0.5))
-    rospy.spin()

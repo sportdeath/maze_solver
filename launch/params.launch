@@ -1,6 +1,7 @@
 <launch>
   <!-- Load local parameters -->
   <rosparam command="load" file="$(find maze_solver)/params/rrt.yaml" ns="/maze_solver"/>
+  <rosparam command="load" file="$(find maze_solver)/params/trajectory_tracking.yaml" ns="/maze_solver"/>
   <rosparam command="load" file="$(find maze_solver)/params/car.yaml" ns="/maze_solver"/>
   <rosparam command="load" file="$(find maze_solver)/params/topics.yaml" ns="/maze_solver"/>
   <rosparam command="load" file="$(find maze_solver)/params/frames.yaml" ns="/maze_solver"/>
