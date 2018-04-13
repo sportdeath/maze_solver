@@ -38,20 +38,21 @@ class MapDilater:
 
     def dilate(self, map_msg):
         # Apply dilation
-        self.grid_dilated.resize(map_msg.data.shape)
+        # self.grid_dilated.resize(map_msg.data.shape)
         disk = skimage.morphology.disk(np.ceil(self.DILATION_RADIUS/map_msg.info.resolution), dtype=np.int8)
-        skimage.morphology.dilation(map_msg.data, selem=disk, out=self.grid_dilated)
+        # skimage.morphology.dilation(map_msg.data, selem=disk, out=self.grid_dilated)
+        map_msg.data = skimage.morphology.dilation(map_msg.data, selem=disk)
 
         # Publish the message
-        map_msg.data = self.grid_dilated
+        # map_msg.data = self.grid_dilated
         map_msg.data.shape = (-1)
-        return map_msg
+        self.map_pub.publish(map_msg)
+        # return map_msg
 
     def map_cb(self, map_msg):
         map_msg.data.shape = (map_msg.info.height, map_msg.info.width)
 
         map_msg = self.dilate(map_msg)
-        self.map_pub.publish(map_msg)
 
 if __name__ == "__main__":
     rospy.init_node("map_dilater")

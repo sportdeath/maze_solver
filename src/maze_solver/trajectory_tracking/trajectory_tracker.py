@@ -24,6 +24,7 @@ class TrajectoryTracker:
     BASE_FRAME = rospy.get_param("/maze_solver/base_frame")
     VELOCITY = rospy.get_param("/maze_solver/velocity")
     LOOK_AHEAD_VIZ_TOPIC = "/look_ahead"
+    MIN_VELOCITY = 0.2
 
     def __init__(self):
         # Create a publisher
@@ -87,7 +88,7 @@ class TrajectoryTracker:
         self.at_end = False
 
     def compute_control(self):
-        goal_point_map, self.path_index, self.is_lost, self.at_end = PurePursuit.pick_closest_point(
+        goal_point_map, t, self.path_index, self.is_lost, self.at_end = PurePursuit.pick_closest_point(
                 self.pose,
                 self.path,
                 self.path_index,
@@ -103,15 +104,25 @@ class TrajectoryTracker:
         goal_point_base = self.transform_point(goal_point_map)
         self.visualize(goal_point_base)
 
+        # Get the pure pursuit angle
         angle = PurePursuit.ackermann_angle(goal_point_base, self.AXLE_LENGTH)
-
         angle = np.clip(angle, -self.MAX_STEERING_ANGLE, self.MAX_STEERING_ANGLE)
 
         velocity = self.VELOCITY
+
+        # Check if we are at the end or reversing 
+        # print self.path_index +1, len(self.path)
+        if self.path_index + 2 >= len(self.path) or \
+                self.reverses[self.path_index + 2] != self.reverses[self.path_index + 1]:
+            velocity = self.control_velocity(velocity, t)
+
         if self.reverses[self.path_index]:
             velocity *= -1
 
         return velocity, angle
+
+    def control_velocity(self, velocity, t):
+        return max(self.MIN_VELOCITY, velocity * t)
 
     def drive(self, event=None):
         """

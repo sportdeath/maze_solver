@@ -55,7 +55,7 @@ class PurePursuit:
         prev_diff = points[prev_index] - position
         prev_diff_sq = np.dot(prev_diff, prev_diff)
         if prev_diff_sq >= look_ahead_distance_sq:
-            return points[prev_index], prev_index, True, False
+            return points[prev_index], 1, prev_index, True, False
 
         # For all future points
         for i in xrange(prev_index + 1, len(points)):
@@ -75,8 +75,8 @@ class PurePursuit:
 
                 interpolated = points[i] + root * point_diff
 
-                return interpolated, i - 1, False, False
+                return interpolated, root, i - 1, False, False
 
         # If all future points are less than the look ahead distance,
         # we have reached the end of the path.
-        return points[-1], len(points) - 1, False, True
+        return points[-1], 0, len(points) - 1, False, True
