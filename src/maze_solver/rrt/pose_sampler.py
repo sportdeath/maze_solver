@@ -30,8 +30,7 @@ class PoseSampler:
             # Choose a random occupied point
             index = np.random.randint(len(occupied_points))
             point0_px = occupied_points[index]
-            point0 = PoseSampler.px_to_point(point0_px[1], point0_px[0], map_msg)
-
+            point0 = PoseSampler.px_to_point(point0_px[1], point0_px[0], map_msg) 
             # Pick a point nearby
             noise = np.random.normal(scale=std_dev, size=2)
             point1 = point0 + noise
@@ -71,7 +70,7 @@ class PoseSampler:
     @staticmethod
     def hybrid(p_uniform, max_radius, bridge_std_dev, map_msg, occupied_points, occupancy_threshold):
         choice = np.random.uniform()
-        if choice < p_uniform:
+        if choice < p_uniform or len(occupied_points) == 0:
             return PoseSampler.uniform(max_radius, map_msg, occupancy_threshold)
         else:
             return PoseSampler.bridge(bridge_std_dev, map_msg, occupied_points, occupancy_threshold)

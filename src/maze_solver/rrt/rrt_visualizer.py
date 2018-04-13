@@ -10,9 +10,14 @@ class RRTVisualizer:
     TREE_VIZ_FOR_TOPIC = "/tree_viz_for"
     TREE_VIZ_REV_TOPIC = "/tree_viz_rev"
     CARTOGRAPHER_FRAME = "cartographer_map"
+    OCCUPIED_TOPIC = "/occupied"
 
     def __init__(self):
         # Publish the goal path
+        self.occupied_pub = rospy.Publisher(
+                self.OCCUPIED_TOPIC,
+                Marker,
+                queue_size=1)
         self.path_viz_pub = rospy.Publisher(
                 self.PATH_VIZ_TOPIC,
                 Marker,
@@ -25,6 +30,15 @@ class RRTVisualizer:
                 self.TREE_VIZ_REV_TOPIC,
                 Marker,
                 queue_size=1)
+
+    def visualize_changed_points(self, occupied_points):
+        if self.occupied_pub.get_num_connections() > 0:
+            VisualizationUtils.plot(
+                    occupied_points[:,0],
+                    occupied_points[:,1],
+                    self.occupied_pub, 
+                    frame=self.CARTOGRAPHER_FRAME,
+                    marker_type=Marker.POINTS)
 
     def visualize_path(self, rrt):
         if self.path_viz_pub.get_num_connections() > 0:
