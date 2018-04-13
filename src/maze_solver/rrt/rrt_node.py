@@ -1,6 +1,6 @@
 import numpy as np
 
-from maze_solver.steer.steer import DubinsSteer
+from maze_solver.rrt.steer import DubinsSteer
 from maze_solver.rrt.pose_sampler import PoseSampler
 
 class RRTNode:
