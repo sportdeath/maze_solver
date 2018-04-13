@@ -1,3 +1,5 @@
+import threading
+
 import numpy as np
 
 import rospy
@@ -28,6 +30,8 @@ class TrajectoryTracker:
     VELOCITY_PROP = 0.5
 
     def __init__(self):
+        self.lock = threading.Lock()
+
         # Create a publisher
         self.drive_pub = rospy.Publisher(
                 self.DRIVE_TOPIC,
@@ -57,10 +61,13 @@ class TrajectoryTracker:
         """
         Stop driving.
         """
+        self.lock.acquire()
         self.at_end = True
+        self.lock.release()
         self.drive()
 
     def track(self, path):
+        self.lock.acquire()
         # Sample the path
         points = []
         self.reverses = []
@@ -88,6 +95,7 @@ class TrajectoryTracker:
         self.path = np.concatenate(points, axis=0)[:, :2]
         self.is_lost = False
         self.at_end = False
+        self.lock.release()
 
     def compute_control(self):
         goal_point_map, t, self.path_index, self.is_lost, at_end = PurePursuit.pick_closest_point(
@@ -133,6 +141,7 @@ class TrajectoryTracker:
         if self.path is None:
             return
 
+        self.lock.acquire()
         # if self.is_lost or self.at_end or (self.pose is None):
         if self.pose is None:
             velocity, angle = 0., 0.
@@ -151,6 +160,7 @@ class TrajectoryTracker:
 
         # Publish it
         self.drive_pub.publish(drive_msg)
+        self.lock.release()
 
     def update_pose(self):
         """
