@@ -60,8 +60,23 @@ class TrajectoryTracker:
     def track(self, path):
         # Sample the path
         points = []
-        for steer in path:
-            points.append(steer.sample(self.TRAJECTORY_SAMPLE_WIDTH))
+        self.reverses = []
+        for i, (steer, reverse) in enumerate(path):
+            samples = steer.sample(self.TRAJECTORY_SAMPLE_WIDTH)
+            if reverse:
+                samples = samples[::-1]
+            points.append(samples)
+            self.reverses += [reverse] * len(samples)
+
+            if i + 1 == len(path) or path[i + 1][1] != reverse:
+                # We are reversing direction or at the end of the path
+                # Add a look ahead point
+                points.append(np.array([[
+                    samples[-1,0] + self.LOOK_AHEAD_DISTANCE * np.cos(samples[-1,2]),
+                    samples[-1,1] + self.LOOK_AHEAD_DISTANCE * np.sin(samples[-1,2]),
+                    samples[-1,2]]]))
+
+                self.reverses += [self.reverses[-1]]
 
         self.path_index = 0
         self.path = np.concatenate(points, axis=0)[:, :2]
@@ -87,7 +102,11 @@ class TrajectoryTracker:
 
         angle = np.clip(angle, -self.MAX_STEERING_ANGLE, self.MAX_STEERING_ANGLE)
 
-        return self.VELOCITY, angle
+        velocity = self.VELOCITY
+        if self.reverses[self.path_index]:
+            velocity *= -1
+
+        return velocity, angle
 
     def drive(self, event=None):
         """

@@ -9,7 +9,7 @@ class RRTVisualizer:
     PATH_VIZ_TOPIC = "/path_viz"
     TREE_VIZ_FOR_TOPIC = "/tree_viz_for"
     TREE_VIZ_REV_TOPIC = "/tree_viz_rev"
-    CARTOGRAPHER_FRAME = "cartographer_map"
+    CARTOGRAPHER_FRAME = rospy.get_param("/maze_solver/cartographer_frame")
     OCCUPIED_TOPIC = "/occupied"
 
     def __init__(self):
@@ -43,8 +43,11 @@ class RRTVisualizer:
     def visualize_path(self, path):
         if self.path_viz_pub.get_num_connections() > 0:
             points = []
-            for steer in path:
-                points.append(steer.sample(0.05))
+            for steer, reverse in path:
+                samples = steer.sample(0.05)
+                if reverse:
+                    samples = samples[::-1]
+                points.append(samples)
 
             points = np.concatenate(points, axis=0)
             VisualizationUtils.plot(

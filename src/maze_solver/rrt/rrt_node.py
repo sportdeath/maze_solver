@@ -12,8 +12,8 @@ class RRTNode:
             map_msg=None,
             occupied_points=None,
             occupancy_threshold=None,
-            cost=None, 
-            reverse=None):
+            cost=None,
+            p_reverse=None):
         """
         Create a node to be placed in an RRT* tree.
 
@@ -31,7 +31,6 @@ class RRTNode:
                 node is driven in reverse.
         """
 
-        self.reverse = False
 
         if pose is None:
             # Initialize a node with a random state
@@ -44,6 +43,11 @@ class RRTNode:
                     occupancy_threshold)
         else:
             self.pose = pose
+
+        if p_reverse is not None:
+            self.reverse = (np.random.uniform() < p_reverse)
+        else:
+            self.reverse = False
 
         self.cost = cost
 
@@ -105,7 +109,7 @@ class RRTNode:
         path = []
         while node.parent is not None:
             steer = node.steer(min_turning_radius)
-            path.append(steer)
+            path.append((steer, node.reverse))
             node = node.parent
 
         return path[::-1]

@@ -26,6 +26,7 @@ class MapDilater:
         self.map_pub = rospy.Publisher(
                 self.CARTOGRAPHER_DILATED_TOPIC,
                 numpy_msg(OccupancyGrid),
+                latch=True,
                 queue_size=1)
 
         # Subscribe to the map
@@ -35,21 +36,22 @@ class MapDilater:
                 self.map_cb, 
                 queue_size=1)
 
-    def dilate(self, msg):
+    def dilate(self, map_msg):
         # Apply dilation
-        self.grid_dilated.resize(msg.data.shape)
-        disk = skimage.morphology.disk(np.ceil(self.DILATION_RADIUS/msg.info.resolution), dtype=np.int8)
-        skimage.morphology.dilation(msg.data, selem=disk, out=self.grid_dilated)
+        self.grid_dilated.resize(map_msg.data.shape)
+        disk = skimage.morphology.disk(np.ceil(self.DILATION_RADIUS/map_msg.info.resolution), dtype=np.int8)
+        skimage.morphology.dilation(map_msg.data, selem=disk, out=self.grid_dilated)
 
         # Publish the message
-        msg.data = self.grid_dilated
-        msg.data.shape = (-1)
-        self.map_pub.publish(msg)
+        map_msg.data = self.grid_dilated
+        map_msg.data.shape = (-1)
+        return map_msg
 
-    def map_cb(self, msg):
-        msg.data.shape = (msg.info.height, msg.info.width)
+    def map_cb(self, map_msg):
+        map_msg.data.shape = (map_msg.info.height, map_msg.info.width)
 
-        self.dilate(msg)
+        map_msg = self.dilate(map_msg)
+        self.map_pub.publish(map_msg)
 
 if __name__ == "__main__":
     rospy.init_node("map_dilater")

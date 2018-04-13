@@ -16,11 +16,12 @@ class RRT:
     BRIDGE_STD_DEV = rospy.get_param("/maze_solver/bridge_std_dev")
     DILATION_RADIUS = rospy.get_param("/maze_solver/dilation_radius")
     OCCUPANCY_THRESHOLD = rospy.get_param("/maze_solver/occupancy_threshold")
+    P_REVERSE = rospy.get_param("/maze_solver/p_reverse")
     CAR_RADIUS = rospy.get_param("/maze_solver/car_radius")
     SEARCH_RADIUS = rospy.get_param("/maze_solver/search_radius")
     MIN_TURNING_RADIUS = rospy.get_param("/maze_solver/min_turning_radius")
 
-    def __init__(self, pose, map_msg):
+    def __init__(self, pose, map_msg, goal=None):
         self.map_msg = map_msg
         self.occupied_points = np.argwhere(self.map_msg.data > self.OCCUPANCY_THRESHOLD)
 
@@ -38,6 +39,11 @@ class RRT:
         self.sample_width = 2 * np.sqrt(self.DILATION_RADIUS**2 - self.CAR_RADIUS**2)
         
         # Make a root and a goal
+        if goal is not None:
+            self.goal = RRTNode(pose=goal, cost=np.inf)
+            self.insert(self.goal)
+        else:
+            self.goal = None
         self.goal_nodes = []
         self.root = RRTNode(
                 pose=pose,
@@ -142,28 +148,37 @@ class RRT:
                             steer.length())
 
     def check_goal(self, node):
+        if self.goal is not None:
+            return
+
         # Find the closest point on the boundary
         position = node.pose[:2]
         direction = node.pose[:2]/np.linalg.norm(node.pose[:2])
-        closest_pose = np.array([
+        goal_pose = np.array([
             direction[0] * self.SEARCH_RADIUS,
             direction[1] * self.SEARCH_RADIUS,
             np.arctan2(direction[1], direction[0])])
-        closest = RRTNode(pose=closest_pose)
+        goal = RRTNode(pose=goal_pose)
 
         # Steer from the node to that point
-        steer = closest.steer(self.MIN_TURNING_RADIUS, parent=node)
+        steer = goal.steer(self.MIN_TURNING_RADIUS, parent=node)
         if not steer.intersects(self.sample_width, self.map_msg, self.OCCUPANCY_THRESHOLD):
-            self.insert(closest)
-            closest.set_parent(
+            self.insert(goal)
+            goal.set_parent(
                     node,
                     steer.length())
-            self.goal_nodes.append(closest)
+            self.goal_nodes.append(goal)
 
     def path(self):
         """
         Get the shortest path to the goal.
         """
+        if self.goal is not None:
+            if self.goal.parent  is not None:
+                return self.goal.path(self.MIN_TURNING_RADIUS)
+            else:
+                return None
+
         min_node = None
         min_cost = np.inf
         for goal_node in self.goal_nodes:
@@ -191,7 +206,8 @@ class RRT:
                 bridge_std_dev=self.BRIDGE_STD_DEV,
                 map_msg=self.map_msg,
                 occupied_points=self.occupied_points,
-                occupancy_threshold=self.OCCUPANCY_THRESHOLD)
+                occupancy_threshold=self.OCCUPANCY_THRESHOLD,
+                p_reverse=self.P_REVERSE)
 
         # Choose the K-nearest neighbors of the random sample
         X_near = self.near(x_rand)

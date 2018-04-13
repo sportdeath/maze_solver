@@ -1,0 +1,10 @@
+<launch>
+  <!-- Load parameters -->
+  <include file="$(find maze_solver)/launch/params.launch"/>
+  <param name="/maze_solver/cartographer_topic" value="/map"/>
+  <param name="/maze_solver/cartographer_frame" value="map"/>
+
+  <!-- Solve the maze -->
+  <node name="map_dilater" pkg="maze_solver" type="map_dilater.py" output="screen"/>
+	<node name="track" pkg="maze_solver" type="track.py" output="screen"/>
+</launch>
