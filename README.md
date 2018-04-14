@@ -6,7 +6,7 @@
 
 Install [```pydubins```](https://github.com/AndrewWalker/pydubins) through pip.
 
-    pip install dubins
+    pip install git+git://github.com/sportdeath/pydubins.git
 
 ### RTree
 
